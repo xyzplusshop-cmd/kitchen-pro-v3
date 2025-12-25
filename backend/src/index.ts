@@ -7,7 +7,13 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 4000;
 
-app.use(cors());
+app.use(cors({
+    origin: [
+        'http://localhost:5173',
+        'https://kitchen-pro-v3.vercel.app'
+    ],
+    credentials: true
+}));
 app.use(express.json());
 
 // === TIPOS Y CONTEXTO ===
