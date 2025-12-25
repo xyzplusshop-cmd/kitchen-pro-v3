@@ -1,0 +1,28 @@
+--------------------------------------------------
+KITCHEN PRO - DESPIECE TÉCNICO: MÓDULO BAJO 600
+--------------------------------------------------
+[PIEZA]: Lateral Izquierdo 
+  Medida Final: 580.0 x 720.0 mm
+  Cantos:       T:0.4 B:0 L:0.4 R:0
+  CORTE MADERA: 579.6 x 719.6 mm
+--------------------------------------------------
+[PIEZA]: Lateral Derecho   
+  Medida Final: 580.0 x 720.0 mm
+  Cantos:       T:0.4 B:0 L:0 R:0.4
+  CORTE MADERA: 579.6 x 719.6 mm
+--------------------------------------------------
+[PIEZA]: Piso (Base)       
+  Medida Final: 580.0 x 564.0 mm
+  Cantos:       T:0.4 B:0 L:0 R:0
+  CORTE MADERA: 580.0 x 563.6 mm
+--------------------------------------------------
+[PIEZA]: Puerta Izquierda  
+  Medida Final: 298.5 x 717.0 mm
+  Cantos:       T:2 B:2 L:2 R:2
+  CORTE MADERA: 294.5 x 713.0 mm
+--------------------------------------------------
+[PIEZA]: Puerta Derecha    
+  Medida Final: 298.5 x 717.0 mm
+  Cantos:       T:2 B:2 L:2 R:2
+  CORTE MADERA: 294.5 x 713.0 mm
+--------------------------------------------------
