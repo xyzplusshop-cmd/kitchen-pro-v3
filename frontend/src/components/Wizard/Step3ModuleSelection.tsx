@@ -1,4 +1,3 @@
-import React from 'react';
 import { useProjectStore } from '../../store/useProjectStore';
 import { ArrowLeft, Plus, Trash2, Info } from 'lucide-react';
 
@@ -43,8 +42,8 @@ export const Step3ModuleSelection = () => {
                             onClick={() => handleAddModule(item)}
                             disabled={remaining < item.defaultWidth}
                             className={`w-full flex items-center justify-between p-4 rounded-xl border-2 transition ${remaining >= item.defaultWidth
-                                    ? 'border-slate-100 hover:border-blue-500 hover:bg-blue-50'
-                                    : 'opacity-40 cursor-not-allowed bg-slate-50'
+                                ? 'border-slate-100 hover:border-blue-500 hover:bg-blue-50'
+                                : 'opacity-40 cursor-not-allowed bg-slate-50'
                                 }`}
                         >
                             <div className="text-left">

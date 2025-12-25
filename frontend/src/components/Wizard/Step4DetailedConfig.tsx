@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useProjectStore } from '../../store/useProjectStore';
 import { ArrowLeft, Check, ChevronRight, Settings2, Box, Info } from 'lucide-react';
 
@@ -31,8 +31,8 @@ export const Step4DetailedConfig = () => {
                         key={m.id}
                         onClick={() => setSelectedModuleId(m.id)}
                         className={`w-full flex items-center gap-3 p-4 rounded-xl border-2 transition text-left ${selectedModuleId === m.id
-                                ? 'border-blue-500 bg-blue-50 shadow-sm'
-                                : 'border-white bg-white hover:border-slate-200'
+                            ? 'border-blue-500 bg-blue-50 shadow-sm'
+                            : 'border-white bg-white hover:border-slate-200'
                             }`}
                     >
                         <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-xs ${selectedModuleId === m.id ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-500'
@@ -87,8 +87,8 @@ export const Step4DetailedConfig = () => {
                                                 disabled={selectedModule?.type === 'SINK_BASE' && num === 1}
                                                 onClick={() => updateModule(selectedModuleId, { doorCount: num })}
                                                 className={`flex-1 py-3 rounded-lg border-2 font-bold transition ${selectedModule?.doorCount === num
-                                                        ? 'border-blue-500 bg-blue-600 text-white'
-                                                        : 'border-slate-100 bg-slate-50 text-slate-500 hover:border-slate-200'
+                                                    ? 'border-blue-500 bg-blue-600 text-white'
+                                                    : 'border-slate-100 bg-slate-50 text-slate-500 hover:border-slate-200'
                                                     }`}
                                             >
                                                 {num} {num === 1 ? 'Puerta' : 'Puertas'}
@@ -112,8 +112,8 @@ export const Step4DetailedConfig = () => {
                                                 key={num}
                                                 onClick={() => updateModule(selectedModuleId, { drawerCount: num })}
                                                 className={`flex-1 py-3 rounded-lg border-2 font-bold transition ${selectedModule?.drawerCount === num
-                                                        ? 'border-blue-500 bg-blue-600 text-white'
-                                                        : 'border-slate-100 bg-slate-50 text-slate-500 hover:border-slate-200'
+                                                    ? 'border-blue-500 bg-blue-600 text-white'
+                                                    : 'border-slate-100 bg-slate-50 text-slate-500 hover:border-slate-200'
                                                     }`}
                                             >
                                                 {num === 0 ? 'Sin gavetas' : num}

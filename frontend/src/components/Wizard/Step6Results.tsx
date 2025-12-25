@@ -1,11 +1,11 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useProjectStore } from '../../store/useProjectStore';
 import { ArrowLeft, Download, FileText, Layout, Printer, CheckCircle2, Loader2, AlertCircle } from 'lucide-react';
 import axios from 'axios';
 
 export const Step6Results = () => {
     const {
-        projectName, clientName, linearLength, boardThickness,
+        projectName, linearLength, boardThickness,
         edgeRuleDoors, edgeRuleVisible, edgeRuleInternal,
         plinthLength, countertopLength,
         modules, prevStep
@@ -18,7 +18,8 @@ export const Step6Results = () => {
     useEffect(() => {
         const calculateProject = async () => {
             try {
-                const response = await axios.post('http://localhost:4000/api/calculate-project', {
+                const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:4000';
+                const response = await axios.post(`${apiBaseUrl}/api/calculate-project`, {
                     projectName,
                     linearLength,
                     boardThickness,
@@ -38,7 +39,7 @@ export const Step6Results = () => {
         };
 
         calculateProject();
-    }, []);
+    }, [projectName, linearLength, boardThickness, edgeRuleDoors, edgeRuleVisible, edgeRuleInternal, modules]);
 
     if (loading) {
         return (
