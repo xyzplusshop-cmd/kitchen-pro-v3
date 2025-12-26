@@ -1,26 +1,22 @@
-# Resumen de Mejoras: Refactorización y Estabilidad Kitchen Pro
+# Resumen de Mejoras: Versión Definitiva Kitchen Pro
 
-Hemos finalizado la refactorización integral del sistema para soportar una jerarquía de 3 zonas y resolver los problemas de conectividad en producción.
+Hemos finalizado el despliegue de la versión más robusta hasta la fecha, resolviendo los problemas de red y optimizando la fluidez de trabajo.
 
-## 1. Estabilidad Prod: Fix de Red "Fuerza Bruta"
-Se ha implementado un middleware de CORS manual en `backend/src/index.ts` que intercepta todas las peticiones y responde inmediatamente a los pre-flights (`OPTIONS`). Esto garantiza que Vercel pueda comunicarse con Railway sin bloqueos de navegador.
+## 1. Estabilidad Prod: Fix de Red "Blindada" (CORS V2)
+Se ha configurado una política de red reforzada en el Backend de Railway. El sistema ahora acepta explícitamente cabeceras críticas (`Accept`, `Origin`) que antes causaban el "Network Error" en ciertos navegadores.
 
-## 2. Refactorización: Sistema de 3 Zonas
-El motor de cálculo (`useProjectStore.ts`) ahora maneja tres planos independientes:
-- **Torres**: Tienen prioridad absoluta y restan ancho tanto al nivel bajo como al aéreo.
-- **Zona Baja (Bajos)**: Módulos estándar, gaveteros y mueble fregadero. El espacio se distribuye elásticamente entre ellos.
-- **Zona Aérea (Alacenas)**: Módulos superiores con su propio motor de cálculo independiente de la zona baja.
+## 2. Fluidez: Navegación de Emergencia
+- **Resiliencia en Errores**: Si ocurre un fallo de red, la pantalla de resultados ahora ofrece botones directos para **Reintentar**, **Ajustar Campana** o **Ajustar Medidas**. Esto evita que te quedes atrapado o tengas que retroceder paso a paso.
+- **Wizard Interactivo**: Los indicadores de pasos en la parte superior ahora son **clicables**. Puedes saltar directamente a cualquier paso anterior (Datos, Espacio, Equipos, etc.) con un solo clic.
 
-## 3. Lógica Avanzada Estufa-Campana
-Se ha añadido un nuevo paso de configuración inteligente para la zona de cocción:
-- **Hueco Simétrico**: Se reserva el mismo espacio arriba que el de la estufa.
-- **Hueco Personalizado**: Permite definir un ancho exacto para campanas decorativas.
-- **Campana Empotrada**: Inserta automáticamente un módulo de despiece técnico (`MUEBLE_CAMPANA`) arriba para campanas ocultas.
+## 3. Motor Inteligente de 3 Zonas
+El cálculo de módulos se ha refinado en su jerarquía:
+- **Torres con Prioridad**: Restan espacio automáticamente tanto en el nivel inferior (Bajos) como en el superior (Aéreos).
+- **Lógica de Campana Global**: El motor reserva el hueco o inserta el mueble empotrado según lo configurado en el Paso 2.5, afectando el despiece del Paso 4 de forma inmediata.
 
-## 4. Mejoras Visuales y Despiece
-- **Regla Dual**: La previsualización visual ahora muestra dos filas (Superior/Inferior).
-- **Elasticidad CSS**: Los módulos aéreos ahora llenan visualmente todo el ancho disponible.
-- **Reportes Técnicos**: La lista de corte final en `Step6Results.tsx` agrupa las piezas por zona.
+## 4. Estética y Precisión Técnica
+- **Aéreos Elásticos**: Se corrigió el CSS para que los módulos aéreos llenen visualmente todo el ancho de la pared, eliminando espacios vacíos.
+- **Reporte Grupal**: La lista de corte final agrupa las piezas por zona para un ensamblaje más ordenado en taller.
 
 > [!IMPORTANT]
-> Los cambios en el store aseguran que si añades una torre, tanto las alacenas como los bajos se reajusten automáticamente para mantener la longitud lineal perfecta de la cocina.
+> Los cambios ya están desplegados. Si habías tenido errores antes, te recomiendo recargar la página (`F5`) para asegurar que cargues la última versión con los fix de navegación.
