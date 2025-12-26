@@ -7,12 +7,14 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 4000;
 
-app.use(cors()); // Permitir todos los orígenes para el MVP y resolver el bloqueo de CORS inmediato
+app.use(cors());
+app.options('*', cors()); // Habilitar pre-flight para todas las rutas
+
 app.use(express.json());
 
 // Log de peticiones para depuración en Railway
 app.use((req, res, next) => {
-    console.log(`${new Date().toISOString()} - ${req.method} ${req.url}`);
+    console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
     next();
 });
 
