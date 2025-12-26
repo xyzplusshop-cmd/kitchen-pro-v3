@@ -8,7 +8,7 @@ import { Step5MaterialsEdges } from './Step5MaterialsEdges';
 import { Step6Results } from './Step6Results';
 
 export const Wizard = () => {
-    const { currentStep } = useProjectStore();
+    const { currentStep, goToStep } = useProjectStore();
 
     const renderCurrentStep = () => {
         switch (currentStep) {
@@ -51,14 +51,19 @@ export const Wizard = () => {
                         const stepNum = index + 1;
                         const isActive = currentStep === stepNum;
                         const isCompleted = currentStep > stepNum;
+                        const isNavigable = stepNum <= currentStep; // Solo permite ir a pasos ya alcanzados
 
                         return (
                             <div key={label} className="flex flex-col items-center relative z-10 w-24">
-                                <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold transition-all duration-300 ${isActive ? 'bg-blue-600 text-white shadow-lg shadow-blue-200 scale-110' :
-                                    isCompleted ? 'bg-green-500 text-white' : 'bg-white text-slate-400 border-2 border-slate-200'
-                                    }`}>
+                                <button
+                                    onClick={() => isNavigable && goToStep(stepNum)}
+                                    disabled={!isNavigable}
+                                    className={`w-10 h-10 rounded-full flex items-center justify-center font-bold transition-all duration-300 ${isActive ? 'bg-blue-600 text-white shadow-lg shadow-blue-200 scale-110' :
+                                        isCompleted ? 'bg-green-500 text-white cursor-pointer hover:scale-105' : 'bg-white text-slate-400 border-2 border-slate-200 cursor-not-allowed'
+                                        }`}
+                                >
                                     {isCompleted ? '✓' : stepNum}
-                                </div>
+                                </button>
                                 <span className={`text-[10px] mt-2 font-bold uppercase tracking-wider ${isActive ? 'text-blue-600' : 'text-slate-400'
                                     }`}>
                                     {label}

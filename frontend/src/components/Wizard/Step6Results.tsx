@@ -8,7 +8,7 @@ export const Step6Results = () => {
         projectName, linearLength, boardThickness,
         edgeRuleDoors, edgeRuleVisible, edgeRuleInternal,
         plinthLength, countertopLength,
-        modules, prevStep
+        modules, prevStep, goToStep
     } = useProjectStore();
 
     const [loading, setLoading] = useState(true);
@@ -68,13 +68,47 @@ export const Step6Results = () => {
 
     if (error) {
         return (
-            <div className="max-w-2xl mx-auto bg-red-50 p-8 rounded-2xl border border-red-200 text-center">
-                <AlertCircle size={48} className="text-red-500 mx-auto mb-4" />
-                <h2 className="text-xl font-bold text-red-800">Error de Cálculo</h2>
-                <p className="text-red-600 mb-6">{error}</p>
-                <button onClick={prevStep} className="bg-red-600 text-white px-6 py-2 rounded-lg font-bold">
-                    Regresar y Revisar
-                </button>
+            <div className="max-w-2xl mx-auto bg-red-100 p-10 rounded-3xl border-2 border-red-300 text-center shadow-2xl">
+                <div className="bg-red-500 text-white w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-6 shadow-lg">
+                    <AlertCircle size={40} />
+                </div>
+                <h2 className="text-2xl font-black text-red-900 uppercase tracking-tight mb-2">Error de Conexión</h2>
+                <p className="text-red-700 font-medium mb-8">
+                    {error.includes('Network Error')
+                        ? 'No se pudo conectar con el motor de cálculo en Railway. Verifica tu internet o intenta de nuevo.'
+                        : error}
+                </p>
+
+                <div className="flex flex-col gap-3">
+                    <button
+                        onClick={() => window.location.reload()}
+                        className="w-full bg-red-600 text-white py-4 rounded-xl font-black shadow-xl hover:bg-red-700 transition uppercase tracking-widest flex items-center justify-center gap-2"
+                    >
+                        <Loader2 size={20} className="animate-spin" /> Reintentar Cálculo
+                    </button>
+
+                    <div className="grid grid-cols-2 gap-3">
+                        <button
+                            onClick={() => goToStep(3)}
+                            className="bg-white text-red-700 border-2 border-red-200 py-3 rounded-xl font-bold hover:bg-red-50 transition text-sm"
+                        >
+                            Ajustar Campana
+                        </button>
+                        <button
+                            onClick={() => goToStep(2)}
+                            className="bg-white text-red-700 border-2 border-red-200 py-3 rounded-xl font-bold hover:bg-red-50 transition text-sm"
+                        >
+                            Ajustar Medidas
+                        </button>
+                    </div>
+                </div>
+
+                <div className="mt-8 pt-6 border-t border-red-200">
+                    <p className="text-[10px] text-red-400 font-bold uppercase mb-2">Debug Info para Soporte:</p>
+                    <code className="text-[10px] bg-red-200/50 p-2 rounded block text-red-800 break-all">
+                        {`API: ${import.meta.env.VITE_API_BASE_URL || 'RAILWAY_PROD'} | ERR: ${error}`}
+                    </code>
+                </div>
             </div>
         );
     }

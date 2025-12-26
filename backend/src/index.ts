@@ -7,11 +7,11 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 4000;
 
-// Middleware de CORS manual reforzado para evitar el bloqueo de red en producción
+// Middleware de CORS manual reforzado para evitar el bloqueo de red en producción - Versión Blindada V2
 app.use((req, res, next) => {
     res.header('Access-Control-Allow-Origin', '*');
     res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
+    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin');
     res.header('Access-Control-Allow-Credentials', 'true');
 
     // Responder inmediatamente a las peticiones de pre-flight (OPTIONS)

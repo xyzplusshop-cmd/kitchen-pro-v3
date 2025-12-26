@@ -66,6 +66,7 @@ interface ProjectState {
     removeModule: (id: string) => void;
     nextStep: () => void;
     prevStep: () => void;
+    goToStep: (step: number) => void;
 
     // Computations
     getRemainingSpace: (category: 'TOWER' | 'BASE' | 'WALL') => number;
@@ -145,6 +146,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
 
     nextStep: () => set((state) => ({ currentStep: state.currentStep + 1 })),
     prevStep: () => set((state) => ({ currentStep: Math.max(1, state.currentStep - 1) })),
+    goToStep: (step) => set({ currentStep: step }),
 
     getRemainingSpace: (category) => {
         const { linearLength, hasStove, stoveWidth, hasSink, sinkWidth, modules, stoveHoodMode, hoodWidth } = get();
