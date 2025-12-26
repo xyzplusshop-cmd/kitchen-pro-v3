@@ -2,10 +2,21 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 
+console.log('--- [STARTUP] Inicializando Kitchen Pro API ---');
 dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 4000;
+console.log(`--- [STARTUP] Puerto detectado: ${PORT} ---`);
+
+// Captura de errores globales para evitar cierres silenciosos
+process.on('uncaughtException', (err) => {
+    console.error('🔥 [CRITICAL] Uncaught Exception:', err);
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+    console.error('🔥 [CRITICAL] Unhandled Rejection at:', promise, 'reason:', reason);
+});
 
 // Middleware de CORS manual reforzado para evitar el bloqueo de red en producción - Versión Blindada V2
 app.use((req, res, next) => {
@@ -29,17 +40,21 @@ app.use((req, res, next) => {
     next();
 });
 
-const { PrismaClient } = require('@prisma/client');
+import { PrismaClient } from '@prisma/client';
 const prisma = new PrismaClient();
 
 // Verificación de conexión a la Base de Datos al arrancar
 async function checkDatabaseConnection() {
+    console.log('📡 [DATABASE] Intentando conectar a PostgreSQL...');
     try {
         await prisma.$connect();
         console.log('✅ [DATABASE] Conexión exitosa con PostgreSQL en Railway');
-    } catch (error) {
-        console.error('❌ [DATABASE] Error crítico conectando a la base de datos:', error);
-        // No terminamos el proceso para permitir que el servidor responda errores 500 en lugar de 502
+        const userCount = await prisma.user.count();
+        console.log(`📊 [DATABASE] Usuarios registrados: ${userCount}`);
+    } catch (error: any) {
+        console.error('❌ [DATABASE] Error crítico conectando a la base de datos:', error.message);
+        console.error('🔍 [DATABASE] Código de error:', error.code);
+        console.log('ℹ️ [DATABASE] El servidor continuará ejecutándose para reportar este error.');
     }
 }
 checkDatabaseConnection();
@@ -333,6 +348,5 @@ app.post('/api/projects', async (req, res) => {
 
 app.listen(Number(PORT), '0.0.0.0', () => {
     console.log(`🚀 [SERVER] Kitchen Pro API corriendo en el puerto ${PORT}`);
-    console.log(`🔗 [URL] http://0.0.0.0:${PORT}`);
     console.log(`🔧 [ENV] NODE_ENV: ${process.env.NODE_ENV || 'development'}`);
 });
