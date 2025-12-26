@@ -4,12 +4,14 @@ import { ArrowLeft, Flame, Waves } from 'lucide-react';
 
 export const Step2_5Appliances = () => {
     const {
-        hasStove, stoveWidth, hasSink, sinkWidth,
+        hasStove, stoveWidth, hasSink, sinkWidth, stoveHoodMode, hoodWidth,
         setApplianceData, nextStep, prevStep
     } = useProjectStore();
 
     const [localHasStove, setLocalHasStove] = useState(hasStove);
     const [localStoveWidth, setLocalStoveWidth] = useState(stoveWidth);
+    const [localStoveHoodMode, setLocalStoveHoodMode] = useState(stoveHoodMode);
+    const [localHoodWidth, setLocalHoodWidth] = useState(hoodWidth);
     const [localHasSink, setLocalHasSink] = useState(hasSink);
     const [localSinkWidth, setLocalSinkWidth] = useState(sinkWidth);
 
@@ -19,7 +21,9 @@ export const Step2_5Appliances = () => {
             hasStove: localHasStove,
             stoveWidth: localStoveWidth as 600 | 750,
             hasSink: localHasSink,
-            sinkWidth: Number(localSinkWidth)
+            sinkWidth: Number(localSinkWidth),
+            stoveHoodMode: localStoveHoodMode,
+            hoodWidth: Number(localHoodWidth)
         });
         nextStep();
     };
@@ -44,7 +48,7 @@ export const Step2_5Appliances = () => {
                             </div>
                             <div>
                                 <h3 className="font-bold text-slate-800 text-lg">Estufa / Cocina</h3>
-                                <p className="text-xs text-slate-500">Espacio de hueco fijo</p>
+                                <p className="text-xs text-slate-500">Espacio de hueco fijo en zona baja</p>
                             </div>
                         </div>
                         <input
@@ -56,21 +60,90 @@ export const Step2_5Appliances = () => {
                     </div>
 
                     {localHasStove && (
-                        <div className="flex gap-4 animate-in fade-in slide-in-from-top-2">
-                            <button
-                                type="button"
-                                onClick={() => setLocalStoveWidth(600)}
-                                className={`flex-1 py-3 rounded-lg font-bold border-2 transition ${localStoveWidth === 600 ? 'border-orange-500 bg-orange-500 text-white' : 'border-orange-200 text-orange-600'}`}
-                            >
-                                60 cm (600mm)
-                            </button>
-                            <button
-                                type="button"
-                                onClick={() => setLocalStoveWidth(750)}
-                                className={`flex-1 py-3 rounded-lg font-bold border-2 transition ${localStoveWidth === 750 ? 'border-orange-500 bg-orange-500 text-white' : 'border-orange-200 text-orange-600'}`}
-                            >
-                                75 cm (750mm)
-                            </button>
+                        <div className="space-y-6 animate-in fade-in slide-in-from-top-2">
+                            {/* Selector de Ancho de Estufa */}
+                            <div className="space-y-2">
+                                <label className="text-sm font-semibold text-slate-600">Ancho de la Estufa</label>
+                                <div className="flex gap-4">
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            setLocalStoveWidth(600);
+                                            if (localStoveHoodMode === 'GAP') setLocalHoodWidth(600);
+                                        }}
+                                        className={`flex-1 py-3 rounded-lg font-bold border-2 transition ${localStoveWidth === 600 ? 'border-orange-500 bg-orange-500 text-white' : 'border-orange-200 text-orange-600 bg-white'}`}
+                                    >
+                                        60 cm (600mm)
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            setLocalStoveWidth(750);
+                                            if (localStoveHoodMode === 'GAP') setLocalHoodWidth(750);
+                                        }}
+                                        className={`flex-1 py-3 rounded-lg font-bold border-2 transition ${localStoveWidth === 750 ? 'border-orange-500 bg-orange-500 text-white' : 'border-orange-200 text-orange-600 bg-white'}`}
+                                    >
+                                        75 cm (750mm)
+                                    </button>
+                                </div>
+                            </div>
+
+                            {/* Selector de Configuración Aérea (Campana) */}
+                            <div className="space-y-3 bg-white p-4 rounded-xl border border-orange-100">
+                                <label className="text-sm font-black text-orange-800 uppercase tracking-tight">Zona Aérea Superior (Campana)</label>
+                                <div className="grid grid-cols-1 gap-2">
+                                    <label className={`flex items-start gap-3 p-3 rounded-lg border-2 cursor-pointer transition ${localStoveHoodMode === 'GAP' ? 'border-orange-500 bg-orange-50' : 'border-slate-100 hover:border-orange-200'}`}>
+                                        <input
+                                            type="radio" name="hoodMode" className="mt-1 accent-orange-500"
+                                            checked={localStoveHoodMode === 'GAP'}
+                                            onChange={() => {
+                                                setLocalStoveHoodMode('GAP');
+                                                setLocalHoodWidth(localStoveWidth);
+                                            }}
+                                        />
+                                        <div>
+                                            <p className="font-bold text-sm text-slate-800">Opción A: Hueco Simétrico (Default)</p>
+                                            <p className="text-[10px] text-slate-500">Resta arriba el mismo ancho de la estufa ({localStoveWidth}mm).</p>
+                                        </div>
+                                    </label>
+
+                                    <label className={`flex items-start gap-3 p-3 rounded-lg border-2 cursor-pointer transition ${localStoveHoodMode === 'CUSTOM_GAP' ? 'border-orange-500 bg-orange-50' : 'border-slate-100 hover:border-orange-200'}`}>
+                                        <input
+                                            type="radio" name="hoodMode" className="mt-1 accent-orange-500"
+                                            checked={localStoveHoodMode === 'CUSTOM_GAP'}
+                                            onChange={() => setLocalStoveHoodMode('CUSTOM_GAP')}
+                                        />
+                                        <div className="flex-1">
+                                            <p className="font-bold text-sm text-slate-800">Opción B: Hueco Personalizado</p>
+                                            <p className="text-[10px] text-slate-500 mb-2">Para campanas decorativas más anchas.</p>
+                                            {localStoveHoodMode === 'CUSTOM_GAP' && (
+                                                <div className="flex items-center gap-2 animate-in zoom-in-95 duration-200">
+                                                    <input
+                                                        type="number"
+                                                        placeholder="Ancho (mm)"
+                                                        className="w-full px-3 py-1 border rounded bg-white font-bold text-sm focus:ring-2 focus:ring-orange-200 outline-none"
+                                                        value={localHoodWidth}
+                                                        onChange={(e) => setLocalHoodWidth(Number(e.target.value))}
+                                                    />
+                                                    <span className="text-xs font-bold text-slate-400">mm</span>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </label>
+
+                                    <label className={`flex items-start gap-3 p-3 rounded-lg border-2 cursor-pointer transition ${localStoveHoodMode === 'BUILT_IN_MODULE' ? 'border-orange-500 bg-orange-50' : 'border-slate-100 hover:border-orange-200'}`}>
+                                        <input
+                                            type="radio" name="hoodMode" className="mt-1 accent-orange-500"
+                                            checked={localStoveHoodMode === 'BUILT_IN_MODULE'}
+                                            onChange={() => setLocalStoveHoodMode('BUILT_IN_MODULE')}
+                                        />
+                                        <div>
+                                            <p className="font-bold text-sm text-slate-800">Opción C: Campana Empotrada (Mueble)</p>
+                                            <p className="text-[10px] text-slate-500">Inserta automáticamente un "Mueble Campana" arriba.</p>
+                                        </div>
+                                    </label>
+                                </div>
+                            </div>
                         </div>
                     )}
                 </div>

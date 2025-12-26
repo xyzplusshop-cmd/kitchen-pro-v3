@@ -7,14 +7,19 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 4000;
 
-// Configuración de CORS ultra-permisiva para el MVP y para resolver el bloqueo de red persistente
-app.use(cors({
-    origin: '*',
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
-    credentials: true
-}));
-app.options('*', cors()); // Habilitar pre-flight para todas las rutas
+// Middleware de CORS manual reforzado para evitar el bloqueo de red en producción
+app.use((req, res, next) => {
+    res.header('Access-Control-Allow-Origin', '*');
+    res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
+    res.header('Access-Control-Allow-Credentials', 'true');
+
+    // Responder inmediatamente a las peticiones de pre-flight (OPTIONS)
+    if (req.method === 'OPTIONS') {
+        return res.sendStatus(204);
+    }
+    next();
+});
 
 app.use(express.json());
 

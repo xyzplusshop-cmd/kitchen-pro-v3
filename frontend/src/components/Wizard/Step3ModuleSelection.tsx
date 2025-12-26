@@ -4,7 +4,7 @@ import { ArrowLeft, Plus, Trash2, Info, Lock, Unlock, Settings2, Layout, LayoutG
 
 export const Step3ModuleSelection = () => {
     const {
-        linearLength, hasStove, stoveWidth, hasSink, sinkWidth,
+        linearLength, hasStove, stoveWidth, hasSink, sinkWidth, stoveHoodMode, hoodWidth,
         modules, addModule, removeModule, toggleModuleFixed, updateModuleWidth,
         getRemainingSpace, nextStep, prevStep
     } = useProjectStore();
@@ -22,6 +22,7 @@ export const Step3ModuleSelection = () => {
         // CATEGORIA AEREA
         { type: 'WALL', name: 'Alacena Aérea', defaultWidth: 600, category: 'WALL' },
         { type: 'WALL_OPEN', name: 'Repisa Abierta', defaultWidth: 600, category: 'WALL' },
+        { type: 'MUEBLE_CAMPANA', name: 'Mueble Campana', defaultWidth: 600, category: 'WALL' },
     ];
 
     const handleAddModule = (item: any) => {
@@ -29,7 +30,7 @@ export const Step3ModuleSelection = () => {
             type: item.type,
             category: item.category,
             width: item.defaultWidth,
-            isFixed: false
+            isFixed: item.type === 'MUEBLE_CAMPANA' // El mueble campana nace fijo
         });
     };
 
@@ -74,7 +75,7 @@ export const Step3ModuleSelection = () => {
                         >
                             <div className="text-left">
                                 <span className="block font-bold text-slate-700 group-hover:text-blue-700">{item.name}</span>
-                                <span className="text-xs text-slate-500">Auto-ajustable</span>
+                                <span className="text-xs text-slate-500">{item.type === 'MUEBLE_CAMPANA' ? 'Ancho Fijo' : 'Auto-ajustable'}</span>
                             </div>
                             <Plus size={18} className="text-slate-400 group-hover:text-blue-500" />
                         </button>
@@ -90,7 +91,7 @@ export const Step3ModuleSelection = () => {
                     </p>
                     <p className="text-[10px] text-blue-500 leading-relaxed mt-1">
                         {activeTab === 'BASE' && "Calculado restando Torres y Equipos."}
-                        {activeTab === 'WALL' && "Calculado restando Torres."}
+                        {activeTab === 'WALL' && "Calculado restando Torres y Campana."}
                         {activeTab === 'TOWER' && "Calculado restando Torres fijas."}
                     </p>
                 </div>
@@ -116,45 +117,43 @@ export const Step3ModuleSelection = () => {
                     {/* REGLA VISUAL DE DOBLE NIVEL */}
                     <div className="space-y-4">
                         {/* NIVEL SUPERIOR (AÉREO) */}
-                        <div className="relative h-16 bg-slate-800/50 rounded-xl border border-slate-700 flex items-center px-2">
-                            <div className="flex gap-1 h-full w-full items-center">
-                                {modules.map((m) => {
-                                    if (m.category === 'WALL' || m.category === 'TOWER') {
-                                        return (
-                                            <div
-                                                key={m.id}
-                                                className={`h-[80%] rounded-lg flex items-center justify-center text-[8px] font-black border ${m.category === 'TOWER' ? 'bg-slate-700 border-slate-500 opacity-50' : 'bg-blue-600/30 border-blue-500/50 text-blue-400'}`}
-                                                style={{ width: `${(m.width / linearLength) * 100}%` }}
-                                            >
-                                                {m.width}
-                                            </div>
-                                        );
-                                    }
-                                    return <div key={m.id} style={{ width: `${(m.width / linearLength) * 100}%` }}></div>;
-                                })}
+                        <div className="relative h-16 bg-slate-800/50 rounded-xl border border-slate-700 flex items-center px-4">
+                            <div className="flex w-full h-full items-center justify-stretch">
+                                {hasStove && (stoveHoodMode === 'GAP' || stoveHoodMode === 'CUSTOM_GAP') && (
+                                    <div
+                                        className="bg-orange-500/10 border-2 border-dashed border-orange-500/30 h-[80%] rounded-lg flex items-center justify-center text-[7px] font-black text-orange-500/50 uppercase"
+                                        style={{ width: `${((stoveHoodMode === 'GAP' ? stoveWidth : hoodWidth) / linearLength) * 100}%` }}
+                                    >
+                                        HUECO CAMPANA
+                                    </div>
+                                )}
+                                {modules.filter(m => m.category === 'WALL' || m.category === 'TOWER').map((m) => (
+                                    <div
+                                        key={m.id}
+                                        className={`h-[80%] rounded-lg flex items-center justify-center text-[8px] font-black border flex-grow mx-0.5 transition-all ${m.category === 'TOWER' ? 'bg-slate-700 border-slate-500 opacity-50' : 'bg-blue-600/30 border-blue-500/50 text-blue-400'}`}
+                                        style={{ width: `${(m.width / linearLength) * 100}%`, flexBasis: `${(m.width / linearLength) * 100}%` }}
+                                    >
+                                        {m.type === 'MUEBLE_CAMPANA' ? 'CAMPANA' : m.width}
+                                    </div>
+                                ))}
                             </div>
                             <span className="absolute -right-16 text-[9px] font-black text-slate-600 uppercase">SUPERIOR</span>
                         </div>
 
                         {/* NIVEL INFERIOR (BAJO) */}
-                        <div className="relative h-16 bg-slate-800 rounded-xl border-2 border-slate-700 flex items-center px-2 shadow-inner">
-                            <div className="flex gap-1 h-full w-full items-center">
-                                {hasStove && <div className="bg-orange-500/20 border border-orange-500/50 h-[80%] rounded-lg flex items-center justify-center text-[8px] font-black text-orange-400" style={{ width: `${(stoveWidth / linearLength) * 100}%` }}>STOVE</div>}
-                                {hasSink && <div className="bg-cyan-500/20 border border-cyan-500/50 h-[80%] rounded-lg flex items-center justify-center text-[8px] font-black text-cyan-400" style={{ width: `${(sinkWidth / linearLength) * 100}%` }}>SINK</div>}
-                                {modules.map((m) => {
-                                    if (m.category === 'BASE' || m.category === 'TOWER') {
-                                        return (
-                                            <div
-                                                key={m.id}
-                                                className={`h-[80%] rounded-lg flex items-center justify-center text-[8px] font-black border ${m.category === 'TOWER' ? 'bg-white text-slate-900 border-white' : 'bg-blue-600/60 border-blue-400 text-white'}`}
-                                                style={{ width: `${(m.width / linearLength) * 100}%` }}
-                                            >
-                                                {m.width}
-                                            </div>
-                                        );
-                                    }
-                                    return null;
-                                })}
+                        <div className="relative h-16 bg-slate-800 rounded-xl border-2 border-slate-700 flex items-center px-4 shadow-inner">
+                            <div className="flex w-full h-full items-center justify-stretch">
+                                {hasStove && <div className="bg-orange-500/20 border-2 border-orange-500/50 h-[80%] rounded-lg flex items-center justify-center text-[8px] font-black text-white bg-orange-500 flex-grow mx-0.5" style={{ width: `${(stoveWidth / linearLength) * 100}%`, flexBasis: `${(stoveWidth / linearLength) * 100}%` }}>ESTUFA</div>}
+                                {hasSink && <div className="bg-cyan-500/20 border-2 border-cyan-500/50 h-[80%] rounded-lg flex items-center justify-center text-[8px] font-black text-white bg-cyan-500 flex-grow mx-0.5" style={{ width: `${(sinkWidth / linearLength) * 100}%`, flexBasis: `${(sinkWidth / linearLength) * 100}%` }}>FREGADERO</div>}
+                                {modules.filter(m => m.category === 'BASE' || m.category === 'TOWER').map((m) => (
+                                    <div
+                                        key={m.id}
+                                        className={`h-[80%] rounded-lg flex items-center justify-center text-[8px] font-black border flex-grow mx-0.5 transition-all ${m.category === 'TOWER' ? 'bg-white text-slate-900 border-white' : 'bg-blue-600/60 border-blue-400 text-white'}`}
+                                        style={{ width: `${(m.width / linearLength) * 100}%`, flexBasis: `${(m.width / linearLength) * 100}%` }}
+                                    >
+                                        {m.width}
+                                    </div>
+                                ))}
                             </div>
                             <span className="absolute -right-16 text-[9px] font-black text-slate-600 uppercase">INFERIOR</span>
                         </div>

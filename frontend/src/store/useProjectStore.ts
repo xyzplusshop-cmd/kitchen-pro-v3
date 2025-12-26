@@ -25,6 +25,10 @@ interface ProjectState {
     hasSink: boolean;
     sinkWidth: number;
 
+    // Nueva Lógica Estufa-Campana
+    stoveHoodMode: 'GAP' | 'CUSTOM_GAP' | 'BUILT_IN_MODULE';
+    hoodWidth: number;
+
     // Materiales y Cantos
     materialColor: string;
     boardThickness: 15 | 18;
@@ -44,7 +48,14 @@ interface ProjectState {
     // Actions
     setProjectData: (data: { projectName: string; clientName: string }) => void;
     setSpaceData: (length: number) => void;
-    setApplianceData: (data: { hasStove: boolean; stoveWidth: 600 | 750; hasSink: boolean; sinkWidth: number }) => void;
+    setApplianceData: (data: {
+        hasStove: boolean;
+        stoveWidth: 600 | 750;
+        hasSink: boolean;
+        sinkWidth: number;
+        stoveHoodMode?: 'GAP' | 'CUSTOM_GAP' | 'BUILT_IN_MODULE';
+        hoodWidth?: number;
+    }) => void;
     setMaterialData: (data: { materialColor: string; boardThickness: 15 | 18 }) => void;
     setEdgeRules: (data: { edgeRuleDoors: string; edgeRuleVisible: string; edgeRuleInternal: string }) => void;
     setExtraCosts: (data: { plinthLength: number; countertopLength: number }) => void;
@@ -82,21 +93,20 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     hasSink: false,
     sinkWidth: 600,
 
+    stoveHoodMode: 'GAP',
+    hoodWidth: 600,
+
     modules: [],
 
     setProjectData: (data) => set((state) => ({ ...state, ...data })),
     setSpaceData: (length) => set((state) => {
-        const newModules = recalculateWidths(state.modules, length, state.hasStove ? state.stoveWidth : 0, state.hasSink ? state.sinkWidth : 0);
+        const newModules = recalculateWidths(state.modules, length, state);
         return { ...state, linearLength: length, modules: newModules };
     }),
     setApplianceData: (data) => set((state) => {
-        const newModules = recalculateWidths(
-            state.modules,
-            state.linearLength,
-            data.hasStove ? data.stoveWidth : 0,
-            data.hasSink ? data.sinkWidth : 0
-        );
-        return { ...state, ...data, modules: newModules };
+        const newState = { ...state, ...data };
+        const newModules = recalculateWidths(state.modules, state.linearLength, newState);
+        return { ...newState, modules: newModules };
     }),
     setMaterialData: (data) => set((state) => ({ ...state, ...data })),
     setEdgeRules: (data) => set((state) => ({ ...state, ...data })),
@@ -114,31 +124,31 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
             width: 0
         } as Module;
         const newModules = [...state.modules, newModule];
-        return { modules: recalculateWidths(newModules, state.linearLength, state.hasStove ? state.stoveWidth : 0, state.hasSink ? state.sinkWidth : 0) };
+        return { modules: recalculateWidths(newModules, state.linearLength, state) };
     }),
-    updateModule: (id, data) => set((state) => ({
-        modules: state.modules.map((m) => m.id === id ? { ...m, ...data } : m)
-    })),
+    updateModule: (id, data) => set((state) => {
+        const newModules = state.modules.map((m) => m.id === id ? { ...m, ...data } : m);
+        return { modules: recalculateWidths(newModules, state.linearLength, state) };
+    }),
     toggleModuleFixed: (id) => set((state) => {
         const newModules = state.modules.map((m) => m.id === id ? { ...m, isFixed: !m.isFixed } : m);
-        return { modules: recalculateWidths(newModules, state.linearLength, state.hasStove ? state.stoveWidth : 0, state.hasSink ? state.sinkWidth : 0) };
+        return { modules: recalculateWidths(newModules, state.linearLength, state) };
     }),
     updateModuleWidth: (id, width) => set((state) => {
         const newModules = state.modules.map((m) => m.id === id ? { ...m, width: Number(width), isFixed: true } : m);
-        return { modules: recalculateWidths(newModules, state.linearLength, state.hasStove ? state.stoveWidth : 0, state.hasSink ? state.sinkWidth : 0) };
+        return { modules: recalculateWidths(newModules, state.linearLength, state) };
     }),
     removeModule: (id) => set((state) => {
         const newModules = state.modules.filter(m => m.id !== id);
-        return { modules: recalculateWidths(newModules, state.linearLength, state.hasStove ? state.stoveWidth : 0, state.hasSink ? state.sinkWidth : 0) };
+        return { modules: recalculateWidths(newModules, state.linearLength, state) };
     }),
 
     nextStep: () => set((state) => ({ currentStep: state.currentStep + 1 })),
     prevStep: () => set((state) => ({ currentStep: Math.max(1, state.currentStep - 1) })),
 
     getRemainingSpace: (category) => {
-        const { linearLength, hasStove, stoveWidth, hasSink, sinkWidth, modules } = get();
+        const { linearLength, hasStove, stoveWidth, hasSink, sinkWidth, modules, stoveHoodMode, hoodWidth } = get();
 
-        // Torres siempre restan de todo
         const towerSpace = modules.filter(m => m.category === 'TOWER' && m.isFixed).reduce((acc, m) => acc + m.width, 0);
 
         if (category === 'TOWER') {
@@ -146,32 +156,59 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
         }
 
         if (category === 'BASE') {
-            const reservedBase = (hasStove ? stoveWidth : 0) + (hasSink ? sinkWidth : 0) +
+            const reservedBase = (hasStove ? Number(stoveWidth) : 0) + (hasSink ? Number(sinkWidth) : 0) +
                 modules.filter(m => m.category === 'BASE' && m.isFixed).reduce((acc, m) => acc + m.width, 0);
             return Math.max(0, linearLength - towerSpace - reservedBase);
         }
 
         if (category === 'WALL') {
-            const reservedWall = modules.filter(m => m.category === 'WALL' && m.isFixed).reduce((acc, m) => acc + m.width, 0);
-            return Math.max(0, linearLength - towerSpace - reservedWall);
+            let reservedWallSpace = 0;
+            if (hasStove) {
+                if (stoveHoodMode === 'GAP') reservedWallSpace += Number(stoveWidth);
+                else if (stoveHoodMode === 'CUSTOM_GAP') reservedWallSpace += Number(hoodWidth);
+            }
+            const fixedWall = modules.filter(m => m.category === 'WALL' && m.isFixed).reduce((acc, m) => acc + m.width, 0);
+            return Math.max(0, linearLength - towerSpace - reservedWallSpace - fixedWall);
         }
 
         return 0;
     }
 }));
 
-const recalculateWidths = (modules: Module[], linearLength: number, stoveWidth: number, sinkWidth: number): Module[] => {
+const recalculateWidths = (modules: Module[], linearLength: number, state: any): Module[] => {
+    const { hasStove, stoveWidth, hasSink, sinkWidth, stoveHoodMode, hoodWidth } = state;
+
+    // 0. Manejo especial de MUEBLE_CAMPANA (Empotrada)
+    let currentModules = [...modules];
+    if (hasStove && stoveHoodMode === 'BUILT_IN_MODULE') {
+        const existingHood = currentModules.find(m => m.type === 'MUEBLE_CAMPANA');
+        if (!existingHood) {
+            currentModules.push({
+                id: 'auto-hood-' + Math.random().toString(36).substr(2, 5),
+                type: 'MUEBLE_CAMPANA',
+                category: 'WALL',
+                width: Number(stoveWidth),
+                isFixed: true,
+                doorCount: 1,
+                drawerCount: 0,
+                hingeType: 'Estándar',
+                sliderType: 'Estándar'
+            });
+        }
+    } else {
+        // Al NO estar en modo empotrado, eliminamos CUALQUIER mueble de campana (o el auto-generado)
+        currentModules = currentModules.filter(m => m.type !== 'MUEBLE_CAMPANA');
+    }
+
     // 1. Identificar Torres (Prioridad Máxima)
-    const towerModules = modules.filter(m => m.category === 'TOWER');
+    const towerModules = currentModules.filter(m => m.category === 'TOWER');
     const fixedTowers = towerModules.filter(m => m.isFixed);
     const elasticTowers = towerModules.filter(m => !m.isFixed);
 
-    // Calcular espacio ocupado por torres fijas
     const fixedTowerSpace = fixedTowers.reduce((sum, m) => sum + m.width, 0);
     const availableForTowers = Math.max(0, linearLength - fixedTowerSpace);
 
-    // Distribuir espacio entre torres elásticas (si existen)
-    let processedModules = [...modules];
+    let processedModules = [...currentModules];
     if (elasticTowers.length > 0) {
         const baseWidth = Math.floor(availableForTowers / elasticTowers.length);
         const residue = availableForTowers % elasticTowers.length;
@@ -187,7 +224,7 @@ const recalculateWidths = (modules: Module[], linearLength: number, stoveWidth: 
         });
     }
 
-    // 2. Calcular espacio final robado por Torres (Fijas + Elásticas ya calculadas)
+    // 2. Calcular espacio final robado por Torres
     const totalTowerSpace = processedModules.filter(m => m.category === 'TOWER').reduce((sum, m) => sum + m.width, 0);
     const effectiveLinearLength = Math.max(0, linearLength - totalTowerSpace);
 
@@ -195,7 +232,7 @@ const recalculateWidths = (modules: Module[], linearLength: number, stoveWidth: 
     const baseModules = processedModules.filter(m => m.category === 'BASE');
     const fixedBase = baseModules.filter(m => m.isFixed);
     const elasticBase = baseModules.filter(m => !m.isFixed);
-    const reservedBase = fixedBase.reduce((sum, m) => sum + m.width, 0) + stoveWidth + sinkWidth;
+    const reservedBase = fixedBase.reduce((sum, m) => sum + m.width, 0) + (hasStove ? Number(stoveWidth) : 0) + (hasSink ? Number(sinkWidth) : 0);
     const availableForBase = Math.max(0, effectiveLinearLength - reservedBase);
 
     if (elasticBase.length > 0) {
@@ -214,10 +251,16 @@ const recalculateWidths = (modules: Module[], linearLength: number, stoveWidth: 
     }
 
     // 4. Recalcular ZONA AÉREA (WALL)
+    let reservedWallGap = 0;
+    if (hasStove) {
+        if (stoveHoodMode === 'GAP') reservedWallGap = Number(stoveWidth);
+        else if (stoveHoodMode === 'CUSTOM_GAP') reservedWallGap = Number(hoodWidth);
+    }
+
     const wallModules = processedModules.filter(m => m.category === 'WALL');
     const fixedWall = wallModules.filter(m => m.isFixed);
     const elasticWall = wallModules.filter(m => !m.isFixed);
-    const reservedWall = fixedWall.reduce((sum, m) => sum + m.width, 0);
+    const reservedWall = fixedWall.reduce((sum, m) => sum + m.width, 0) + reservedWallGap;
     const availableForWall = Math.max(0, effectiveLinearLength - reservedWall);
 
     if (elasticWall.length > 0) {
