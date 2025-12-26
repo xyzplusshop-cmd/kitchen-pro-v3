@@ -7,7 +7,13 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 4000;
 
-app.use(cors());
+// Configuración de CORS ultra-permisiva para el MVP y para resolver el bloqueo de red persistente
+app.use(cors({
+    origin: '*',
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+    credentials: true
+}));
 app.options('*', cors()); // Habilitar pre-flight para todas las rutas
 
 app.use(express.json());
@@ -74,65 +80,118 @@ const getEdgeThickness = (rule: string): number => {
 // === MOTOR DE GENERACIÓN DE PIEZAS ===
 const generateModulePieces = (module: any, thickness: number, rules: EdgeRules) => {
     const pieces: any[] = [];
-    const { type, width } = module;
-    const HEIGHT_BASE = 720; // Altura estándar sin zócalo
+    const { type, width, category } = module;
+    const HEIGHT_BASE = 720;
     const DEPTH_BASE = 560;
+    const DEPTH_WALL = 320;
+    const HEIGHT_TOWER = 2100; // Altura estándar para torres
 
     const tDoors = getEdgeThickness(rules.doors);
     const tVisible = getEdgeThickness(rules.visible);
     const tInternal = getEdgeThickness(rules.internal);
 
-    if (type === 'BASE' || type === 'SINK_BASE' || type === 'DRAWER') {
+    // Lógica para BAJOS (BASE)
+    if (category === 'BASE') {
         // Laterales (2)
         pieces.push({
-            name: 'Lateral',
+            name: 'Lateral Base',
             finalWidth: DEPTH_BASE,
             finalHeight: HEIGHT_BASE,
             edges: { top: tInternal, bottom: tInternal, left: tVisible, right: tInternal },
-            quantity: 2
+            quantity: 2,
+            category: 'BASE'
         });
 
         // Piso (1)
         pieces.push({
-            name: 'Piso',
+            name: 'Piso Base',
             finalWidth: width - (2 * thickness),
             finalHeight: DEPTH_BASE,
             edges: { top: tVisible, bottom: tInternal, left: tInternal, right: tInternal },
-            quantity: 1
+            quantity: 1,
+            category: 'BASE'
         });
 
-        // Amarres / Listones (2)
+        // Amarres (2)
         pieces.push({
             name: 'Amarre',
             finalWidth: width - (2 * thickness),
             finalHeight: 100,
             edges: { top: tInternal, bottom: tInternal, left: tInternal, right: tInternal },
-            quantity: 2
+            quantity: 2,
+            category: 'BASE'
         });
 
-        // Puertas (si aplica)
+        // Puertas / Frentes
         if (module.doorCount > 0) {
-            const doorWidth = (width / module.doorCount) - 1.5; // Holgura de 3mm total
+            const doorWidth = (width / module.doorCount) - 3;
             pieces.push({
-                name: 'Puerta',
+                name: 'Puerta Base',
                 finalWidth: doorWidth,
-                finalHeight: HEIGHT_BASE - 4, // Holgura superior
+                finalHeight: HEIGHT_BASE - 5,
                 edges: { top: tDoors, bottom: tDoors, left: tDoors, right: tDoors },
-                quantity: module.doorCount
+                quantity: module.doorCount,
+                category: 'BASE'
             });
         }
+    }
 
-        // Gavetas (si aplica) - Simplificado para MVP
-        if (module.drawerCount > 0) {
-            const frontHeight = (HEIGHT_BASE / module.drawerCount) - 3;
+    // Lógica para AÉREOS (WALL)
+    if (category === 'WALL') {
+        pieces.push({
+            name: 'Lateral Aéreo',
+            finalWidth: DEPTH_WALL,
+            finalHeight: HEIGHT_BASE, // Misma altura que base para este modelo
+            edges: { top: tInternal, bottom: tInternal, left: tVisible, right: tInternal },
+            quantity: 2,
+            category: 'WALL'
+        });
+        pieces.push({
+            name: 'Techo/Piso Aéreo',
+            finalWidth: width - (2 * thickness),
+            finalHeight: DEPTH_WALL,
+            edges: { top: tVisible, bottom: tInternal, left: tInternal, right: tInternal },
+            quantity: 2,
+            category: 'WALL'
+        });
+        if (module.doorCount > 0) {
             pieces.push({
-                name: 'Frente Gaveta',
-                finalWidth: width - 3,
-                finalHeight: frontHeight,
+                name: 'Puerta Aérea',
+                finalWidth: (width / module.doorCount) - 3,
+                finalHeight: HEIGHT_BASE - 5,
                 edges: { top: tDoors, bottom: tDoors, left: tDoors, right: tDoors },
-                quantity: module.drawerCount
+                quantity: module.doorCount,
+                category: 'WALL'
             });
         }
+    }
+
+    // Lógica para TORRES (TOWER)
+    if (category === 'TOWER') {
+        pieces.push({
+            name: 'Lateral Torre',
+            finalWidth: DEPTH_BASE,
+            finalHeight: HEIGHT_TOWER,
+            edges: { top: tInternal, bottom: tInternal, left: tVisible, right: tInternal },
+            quantity: 2,
+            category: 'TOWER'
+        });
+        pieces.push({
+            name: 'Techo/Piso Torre',
+            finalWidth: width - (2 * thickness),
+            finalHeight: DEPTH_BASE,
+            edges: { top: tVisible, bottom: tInternal, left: tInternal, right: tInternal },
+            quantity: 2,
+            category: 'TOWER'
+        });
+        pieces.push({
+            name: 'Estantería Torre',
+            finalWidth: width - (2 * thickness) - 2,
+            finalHeight: DEPTH_BASE - 20,
+            edges: { top: tVisible, bottom: tInternal, left: tInternal, right: tInternal },
+            quantity: 3,
+            category: 'TOWER'
+        });
     }
 
     return pieces;
@@ -209,6 +268,7 @@ app.post('/api/projects', async (req, res) => {
                 modules: {
                     create: modules.map((m: any) => ({
                         type: m.type,
+                        category: m.category || 'BASE',
                         width: Number(m.width),
                         isFixed: !!m.isFixed,
                         doorCount: Number(m.doorCount || 0),

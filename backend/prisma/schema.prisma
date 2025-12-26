@@ -36,6 +36,7 @@ model Module {
   projectId     String
   project       Project  @relation(fields: [projectId], references: [id])
   type          String   // BASE, WALL, TALL, SINK_BASE, DRAWER, etc.
+  category      String   @default("BASE") // TOWER, BASE, WALL
   width         Float
   isFixed       Boolean  @default(false)
   doorCount     Int      @default(0)

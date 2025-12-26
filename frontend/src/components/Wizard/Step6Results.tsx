@@ -140,15 +140,29 @@ export const Step6Results = () => {
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-100">
-                                {results?.pieces.map((p: any, idx: number) => (
-                                    <tr key={idx} className="hover:bg-blue-50/50 transition duration-150 print:hover:bg-transparent">
-                                        <td className="px-6 py-4 font-bold text-slate-700">{p.name}</td>
-                                        <td className="px-6 py-4 font-black">{p.quantity}</td>
-                                        <td className="px-6 py-4 text-slate-400">{p.finalWidth} x {p.finalHeight}</td>
-                                        <td className="px-6 py-4 font-black text-blue-600 bg-blue-50 print:bg-transparent print:text-black print:text-lg">{p.cutWidth} x {p.cutHeight}</td>
-                                        <td className="px-6 py-4 print:hidden"><span className="px-2 py-1 bg-slate-100 rounded text-[10px] font-bold">{p.moduleType}</span></td>
-                                    </tr>
-                                ))}
+                                {['TOWER', 'BASE', 'WALL'].map(cat => {
+                                    const catPieces = results?.pieces.filter((p: any) => p.category === cat);
+                                    if (!catPieces || catPieces.length === 0) return null;
+
+                                    return (
+                                        <div key={cat} className="contents">
+                                            <tr className="bg-slate-50 print:bg-slate-100">
+                                                <td colSpan={5} className="px-6 py-2 font-black text-[10px] text-blue-600 uppercase tracking-widest leading-none">
+                                                    Zona: {cat === 'TOWER' ? 'Torres y Columnas' : cat === 'BASE' ? 'Muebles Bajos' : 'Muebles Aéreos'}
+                                                </td>
+                                            </tr>
+                                            {catPieces.map((p: any, idx: number) => (
+                                                <tr key={`${cat}-${idx}`} className="hover:bg-blue-50/50 transition duration-150 print:hover:bg-transparent">
+                                                    <td className="px-6 py-4 font-bold text-slate-700">{p.name}</td>
+                                                    <td className="px-6 py-4 font-black">{p.quantity}</td>
+                                                    <td className="px-6 py-4 text-slate-400">{p.finalWidth} x {p.finalHeight}</td>
+                                                    <td className="px-6 py-4 font-black text-blue-600 bg-blue-50 print:bg-transparent print:text-black print:text-lg">{p.cutWidth} x {p.cutHeight}</td>
+                                                    <td className="px-6 py-4 print:hidden text-[10px] text-slate-400 font-bold uppercase">{cat}</td>
+                                                </tr>
+                                            ))}
+                                        </div>
+                                    );
+                                })}
                             </tbody>
                         </table>
                     </div>
