@@ -18,7 +18,7 @@ export const Step6Results = () => {
     useEffect(() => {
         const calculateProject = async () => {
             try {
-                const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:4000';
+                const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'https://kitchen-pro-v3-production-6465.up.railway.app';
                 const response = await axios.post(`${apiBaseUrl}/api/calculate-project`, {
                     projectName,
                     linearLength,
@@ -43,7 +43,7 @@ export const Step6Results = () => {
 
     const handleSaveProject = async () => {
         try {
-            const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:4000';
+            const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'https://kitchen-pro-v3-production-6465.up.railway.app';
             const response = await axios.post(`${apiBaseUrl}/api/projects`, {
                 projectName,
                 clientName: 'Cliente Demo', // Simplificado para MVP

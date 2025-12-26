@@ -7,14 +7,14 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 4000;
 
-app.use(cors({
-    origin: [
-        'http://localhost:5173',
-        'https://kitchen-pro-v3.vercel.app'
-    ],
-    credentials: true
-}));
+app.use(cors()); // Permitir todos los orígenes para el MVP y resolver el bloqueo de CORS inmediato
 app.use(express.json());
+
+// Log de peticiones para depuración en Railway
+app.use((req, res, next) => {
+    console.log(`${new Date().toISOString()} - ${req.method} ${req.url}`);
+    next();
+});
 
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
