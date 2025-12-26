@@ -32,6 +32,18 @@ app.use((req, res, next) => {
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 
+// Verificación de conexión a la Base de Datos al arrancar
+async function checkDatabaseConnection() {
+    try {
+        await prisma.$connect();
+        console.log('✅ [DATABASE] Conexión exitosa con PostgreSQL en Railway');
+    } catch (error) {
+        console.error('❌ [DATABASE] Error crítico conectando a la base de datos:', error);
+        // No terminamos el proceso para permitir que el servidor responda errores 500 en lugar de 502
+    }
+}
+checkDatabaseConnection();
+
 // === TIPOS Y CONTEXTO ===
 interface Edges {
     top: number;
@@ -208,6 +220,24 @@ app.get('/', (req, res) => {
     res.send('Kitchen Pro API V3.1 - Online');
 });
 
+app.get('/health', async (req, res) => {
+    let dbStatus = 'Checking...';
+    try {
+        await prisma.$queryRaw`SELECT 1`;
+        dbStatus = 'Connected ✅';
+    } catch (e: any) {
+        dbStatus = `Error: ${e.message} ❌`;
+    }
+
+    res.json({
+        status: 'Online',
+        version: '3.1.2',
+        database: dbStatus,
+        port: PORT,
+        timestamp: new Date().toISOString()
+    });
+});
+
 app.post('/api/calculate-project', (req, res) => {
     try {
         const project = req.body as ProjectData;
@@ -301,6 +331,8 @@ app.post('/api/projects', async (req, res) => {
     }
 });
 
-app.listen(PORT, () => {
-    console.log(`🚀 Servidor corriendo en http://localhost:${PORT}`);
+app.listen(Number(PORT), '0.0.0.0', () => {
+    console.log(`🚀 [SERVER] Kitchen Pro API corriendo en el puerto ${PORT}`);
+    console.log(`🔗 [URL] http://0.0.0.0:${PORT}`);
+    console.log(`🔧 [ENV] NODE_ENV: ${process.env.NODE_ENV || 'development'}`);
 });
