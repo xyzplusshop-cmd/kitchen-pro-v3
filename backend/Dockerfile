@@ -6,6 +6,7 @@ WORKDIR /app
 COPY package*.json ./
 COPY prisma ./prisma/
 RUN npm ci
+RUN npx prisma generate
 
 # Copiar código y compilar
 COPY . .
