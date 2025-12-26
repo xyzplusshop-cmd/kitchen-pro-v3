@@ -35,10 +35,15 @@ model Module {
   id            String   @id @default(uuid())
   projectId     String
   project       Project  @relation(fields: [projectId], references: [id])
-  type          String   // BASE, WALL, TALL, SINK
+  type          String   // BASE, WALL, TALL, SINK_BASE, DRAWER, etc.
   width         Float
-  height        Float
-  depth         Float
+  isFixed       Boolean  @default(false)
+  doorCount     Int      @default(0)
+  drawerCount   Int      @default(0)
+  hingeType     String   @default("Estándar")
+  sliderType    String   @default("Estándar")
+  height        Float    @default(720)
+  depth         Float    @default(560)
   openingSystem String?
   pieces        Piece[]
   createdAt     DateTime @default(now())

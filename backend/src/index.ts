@@ -16,6 +16,9 @@ app.use(cors({
 }));
 app.use(express.json());
 
+const { PrismaClient } = require('@prisma/client');
+const prisma = new PrismaClient();
+
 // === TIPOS Y CONTEXTO ===
 interface Edges {
     top: number;
@@ -176,6 +179,58 @@ app.post('/api/calculate-project', (req, res) => {
         });
     } catch (error: any) {
         res.status(400).json({ success: false, error: error.message });
+    }
+});
+
+app.post('/api/projects', async (req, res) => {
+    try {
+        const { projectName, clientName, linearLength, modules } = req.body;
+
+        // Buscar o crear usuario por defecto para el MVP
+        let user = await prisma.user.findFirst();
+        if (!user) {
+            user = await prisma.user.create({
+                data: {
+                    email: 'demo@kitchenpro.com',
+                    password: 'demo',
+                    name: 'Usuario Demo'
+                }
+            });
+        }
+
+        const project = await prisma.project.create({
+            data: {
+                name: projectName,
+                clientName: clientName,
+                linearLength: Number(linearLength),
+                userId: user.id,
+                modules: {
+                    create: modules.map((m: any) => ({
+                        type: m.type,
+                        width: Number(m.width),
+                        isFixed: !!m.isFixed,
+                        doorCount: Number(m.doorCount || 0),
+                        drawerCount: Number(m.drawerCount || 0),
+                        hingeType: m.hingeType || 'Estándar',
+                        sliderType: m.sliderType || 'Estándar',
+                        height: 720,
+                        depth: 560
+                    }))
+                }
+            },
+            include: {
+                modules: true
+            }
+        });
+
+        res.json({
+            success: true,
+            id: project.id,
+            message: 'Proyecto guardado exitosamente en Railway'
+        });
+    } catch (error: any) {
+        console.error('SERVER ERROR SAVING PROJECT:', error);
+        res.status(500).json({ success: false, error: error.message });
     }
 });
 
