@@ -4,6 +4,7 @@ interface Module {
     id: string;
     type: string;
     width: number;
+    isFixed: boolean;
     doorCount: number;
     drawerCount: number;
     hingeType: string;
@@ -48,6 +49,8 @@ interface ProjectState {
     setExtraCosts: (data: { plinthLength: number; countertopLength: number }) => void;
     addModule: (module: Partial<Module> & { type: string; width: number }) => void;
     updateModule: (id: string, data: Partial<Module>) => void;
+    toggleModuleFixed: (id: string) => void;
+    updateModuleWidth: (id: string, width: number) => void;
     removeModule: (id: string) => void;
     nextStep: () => void;
     prevStep: () => void;
@@ -81,36 +84,82 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     modules: [],
 
     setProjectData: (data) => set((state) => ({ ...state, ...data })),
-    setSpaceData: (length) => set({ linearLength: length }),
-    setApplianceData: (data) => set((state) => ({ ...state, ...data })),
+    setSpaceData: (length) => set((state) => {
+        const newModules = recalculateWidths(state.modules, length, state.hasStove ? state.stoveWidth : 0, state.hasSink ? state.sinkWidth : 0);
+        return { ...state, linearLength: length, modules: newModules };
+    }),
+    setApplianceData: (data) => set((state) => {
+        const newModules = recalculateWidths(
+            state.modules,
+            state.linearLength,
+            data.hasStove ? data.stoveWidth : 0,
+            data.hasSink ? data.sinkWidth : 0
+        );
+        return { ...state, ...data, modules: newModules };
+    }),
     setMaterialData: (data) => set((state) => ({ ...state, ...data })),
     setEdgeRules: (data) => set((state) => ({ ...state, ...data })),
     setExtraCosts: (data) => set((state) => ({ ...state, ...data })),
 
-    addModule: (module) => set((state) => ({
-        modules: [...state.modules, {
+    addModule: (module) => set((state) => {
+        const newModule = {
             id: Math.random().toString(36).substr(2, 9),
+            isFixed: false,
             doorCount: module.type === 'SINK_BASE' ? 2 : (module.type === 'BASE' ? 1 : 0),
             drawerCount: module.type === 'DRAWER' ? 3 : 0,
             hingeType: 'Estándar',
             sliderType: 'Estándar',
-            ...module
-        } as Module]
-    })),
+            ...module,
+            width: 0
+        } as Module;
+        const newModules = [...state.modules, newModule];
+        return { modules: recalculateWidths(newModules, state.linearLength, state.hasStove ? state.stoveWidth : 0, state.hasSink ? state.sinkWidth : 0) };
+    }),
     updateModule: (id, data) => set((state) => ({
         modules: state.modules.map((m) => m.id === id ? { ...m, ...data } : m)
     })),
-    removeModule: (id) => set((state) => ({ modules: state.modules.filter(m => m.id !== id) })),
+    toggleModuleFixed: (id) => set((state) => {
+        const newModules = state.modules.map((m) => m.id === id ? { ...m, isFixed: !m.isFixed } : m);
+        return { modules: recalculateWidths(newModules, state.linearLength, state.hasStove ? state.stoveWidth : 0, state.hasSink ? state.sinkWidth : 0) };
+    }),
+    updateModuleWidth: (id, width) => set((state) => {
+        const newModules = state.modules.map((m) => m.id === id ? { ...m, width: Number(width), isFixed: true } : m);
+        return { modules: recalculateWidths(newModules, state.linearLength, state.hasStove ? state.stoveWidth : 0, state.hasSink ? state.sinkWidth : 0) };
+    }),
+    removeModule: (id) => set((state) => {
+        const newModules = state.modules.filter(m => m.id !== id);
+        return { modules: recalculateWidths(newModules, state.linearLength, state.hasStove ? state.stoveWidth : 0, state.hasSink ? state.sinkWidth : 0) };
+    }),
 
     nextStep: () => set((state) => ({ currentStep: state.currentStep + 1 })),
     prevStep: () => set((state) => ({ currentStep: Math.max(1, state.currentStep - 1) })),
 
     getRemainingSpace: () => {
         const { linearLength, hasStove, stoveWidth, hasSink, sinkWidth, modules } = get();
-        let occupied = 0;
-        if (hasStove) occupied += stoveWidth;
-        if (hasSink) occupied += sinkWidth;
-        occupied += modules.reduce((acc, m) => acc + m.width, 0);
-        return Math.max(0, linearLength - occupied);
+        const reserved = (hasStove ? stoveWidth : 0) + (hasSink ? sinkWidth : 0) +
+            modules.filter(m => m.isFixed).reduce((acc, m) => acc + m.width, 0);
+        return Math.max(0, linearLength - reserved);
     }
 }));
+
+const recalculateWidths = (modules: Module[], linearLength: number, stoveWidth: number, sinkWidth: number): Module[] => {
+    const fixedModules = modules.filter(m => m.isFixed);
+    const elasticModules = modules.filter(m => !m.isFixed);
+
+    const reservedSpace = fixedModules.reduce((sum, m) => sum + m.width, 0) + stoveWidth + sinkWidth;
+    const remainingSpace = Math.max(0, linearLength - reservedSpace);
+
+    if (elasticModules.length === 0) return modules;
+
+    const baseWidth = Math.floor(remainingSpace / elasticModules.length);
+    const residue = remainingSpace % elasticModules.length;
+
+    let appliedResidue = 0;
+    return modules.map(m => {
+        if (m.isFixed) return m;
+        // Distribuir residuo de 1mm a los primeros módulos hasta agotar el residuo
+        const currentResidue = appliedResidue < residue ? 1 : 0;
+        appliedResidue++;
+        return { ...m, width: baseWidth + currentResidue };
+    });
+};
