@@ -7,9 +7,13 @@ export const Step6Results = () => {
     const {
         projectName, linearLength, boardThickness,
         edgeRuleDoors, edgeRuleVisible, edgeRuleInternal,
-        plinthLength, countertopLength,
-        modules, prevStep, goToStep
+        modules, prevStep, goToStep, resetProject,
+        baseHeight, plinthHeight, wallHeight,
+        baseDepth, wallDepth,
+        doorInstallationType, doorGap, drawerInstallationType
     } = useProjectStore();
+
+
 
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -18,7 +22,7 @@ export const Step6Results = () => {
     useEffect(() => {
         const calculateProject = async () => {
             try {
-                const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'https://kitchen-pro-v3-production-6465.up.railway.app';
+                const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:4000';
                 const response = await axios.post(`${apiBaseUrl}/api/calculate-project`, {
                     projectName,
                     linearLength,
@@ -28,11 +32,19 @@ export const Step6Results = () => {
                         visible: edgeRuleVisible,
                         internal: edgeRuleInternal
                     },
-                    modules
+                    modules,
+                    config: {
+                        baseHeight, plinthHeight, wallHeight,
+                        baseDepth, wallDepth,
+                        doorInstallationType, doorGap, drawerInstallationType,
+                        plinthLength, countertopLength
+                    }
                 });
+
                 setResults(response.data);
                 setLoading(false);
             } catch (err: any) {
+
                 setError(err.message || 'Error al conectar con el motor matemático');
                 setLoading(false);
             }
@@ -41,18 +53,38 @@ export const Step6Results = () => {
         calculateProject();
     }, [projectName, linearLength, boardThickness, edgeRuleDoors, edgeRuleVisible, edgeRuleInternal, modules]);
 
+
+    const [saving, setSaving] = useState(false);
+
     const handleSaveProject = async () => {
         try {
-            const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'https://kitchen-pro-v3-production-6465.up.railway.app';
+            setSaving(true);
+            const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:4000';
+
             const response = await axios.post(`${apiBaseUrl}/api/projects`, {
-                projectName,
-                clientName: 'Cliente Demo', // Simplificado para MVP
+                projectName: projectName || 'Mi Cocina Pro',
+                clientName: 'Cliente Demo',
                 linearLength,
-                modules
+                modules,
+                config: {
+                    baseHeight, plinthHeight, wallHeight,
+                    baseDepth, wallDepth,
+                    doorInstallationType, doorGap, drawerInstallationType,
+                    boardThickness,
+                    edgeRuleDoors, edgeRuleVisible, edgeRuleInternal,
+                    plinthLength, countertopLength
+                },
+                thumbnail: null,
+                totalPrice: results?.summary.totalEstimatedPrice || 0
             });
-            alert(`✅ Proyecto Guardado!\nID: ${response.data.id}\n${response.data.message}`);
+
+            alert(`✅ ¡PROYECTO GUARDADO CON ÉXITO!\n\nID: ${response.data.id}\n${response.data.message}\n\nYa puedes acceder a este diseño desde tu panel.`);
+            // window.location.href = '/dashboard'; // Descomentar cuando el dashboard esté listo
         } catch (err: any) {
-            alert('❌ Error al guardar: ' + (err.response?.data?.error || err.message));
+            console.error('Save Error:', err);
+            alert('❌ Error al guardar el proyecto: ' + (err.response?.data?.error || err.message));
+        } finally {
+            setSaving(false);
         }
     };
 
@@ -127,6 +159,12 @@ export const Step6Results = () => {
                     </div>
                 </div>
                 <div className="flex gap-4">
+                    <button
+                        onClick={resetProject}
+                        className="flex items-center gap-2 bg-white/10 hover:bg-white/20 px-4 py-2 rounded-xl transition font-bold border border-white/30"
+                    >
+                        <Layout size={18} /> Nuevo Proyecto
+                    </button>
                     <button
                         onClick={() => window.print()}
                         className="flex items-center gap-2 bg-white/10 hover:bg-white/20 px-4 py-2 rounded-xl transition font-bold border border-white/30"
@@ -229,35 +267,64 @@ export const Step6Results = () => {
                         <h3 className="font-black text-slate-800 mb-6 border-b pb-4 tracking-tighter uppercase">Resumen de Materiales</h3>
                         <div className="space-y-4">
                             <div className="flex justify-between text-sm">
-                                <span className="text-slate-500">Planchas ({boardThickness}mm)</span>
+                                <span className="text-slate-500 font-bold uppercase tracking-widest text-[10px]">Materiales Base</span>
+                            </div>
+                            <div className="flex justify-between text-sm pl-2">
+                                <span className="text-slate-500 italic">Planchas ({boardThickness}mm)</span>
                                 <span className="font-bold">{results?.summary.estimatedBoards} un</span>
                             </div>
-                            <div className="flex justify-between text-sm">
-                                <span className="text-slate-500">Zócalo (ml)</span>
-                                <span className="font-bold">{plinthLength} ml</span>
+                            <div className="flex justify-between text-sm pl-2">
+                                <span className="text-slate-500 italic font-medium">Costo Tableros (Est.)</span>
+                                <span className="font-black text-slate-700">$ {((results?.summary.totalEstimatedPrice || 0) - (results?.summary.hardwareCost || 0)).toLocaleString()}</span>
                             </div>
-                            <div className="flex justify-between text-sm">
-                                <span className="text-slate-500">Encimera (ml)</span>
-                                <span className="font-bold">{countertopLength} ml</span>
+
+                            <div className="pt-2">
+                                <span className="text-slate-500 font-bold uppercase tracking-widest text-[10px]">Herrajes Seleccionados</span>
                             </div>
-                            <div className="pt-4 mt-4 border-t border-dashed flex justify-between items-center text-xl">
-                                <span className="font-black text-slate-800">ESTADO</span>
-                                <span className="font-black text-blue-600 tracking-tighter italic font-serif">LISTO 💎</span>
+                            <div className="flex justify-between text-sm pl-2">
+                                <span className="text-slate-500 italic font-medium">Costo Herrajes (Real)</span>
+                                <span className="font-black text-blue-600">$ {(results?.summary.hardwareCost || 0).toLocaleString()}</span>
+                            </div>
+
+                            <div className="pt-4 mt-4 border-t-2 border-slate-900 flex justify-between items-center bg-slate-50 p-4 rounded-xl">
+                                <span className="font-black text-slate-900 tracking-tighter uppercase">Precio Total</span>
+                                <span className="font-black text-2xl text-blue-600 tracking-tighter">$ {(results?.summary.totalEstimatedPrice || 0).toLocaleString()}</span>
                             </div>
                         </div>
+
                         <button
                             onClick={handleSaveProject}
-                            className="w-full mt-8 bg-blue-600 text-white py-4 rounded-xl font-black hover:bg-blue-700 transition shadow-xl shadow-blue-200 uppercase tracking-widest text-sm"
+                            disabled={saving}
+                            className={`w-full mt-8 py-4 rounded-xl font-black transition shadow-xl uppercase tracking-widest text-sm flex items-center justify-center gap-2 ${saving
+                                ? 'bg-slate-400 cursor-not-allowed shadow-none'
+                                : 'bg-blue-600 text-white hover:bg-blue-700 shadow-blue-200'
+                                }`}
                         >
-                            GUARDAR EN CLOUD ☁️
+                            {saving ? (
+                                <><Loader2 className="animate-spin" size={20} /> GUARDANDO...</>
+                            ) : (
+                                'GUARDAR EN CLOUD ☁️'
+                            )}
                         </button>
                     </div>
                 </div>
             </div>
 
-            <button onClick={prevStep} className="text-slate-400 font-bold hover:text-slate-600 transition flex items-center gap-2 print:hidden">
-                <ArrowLeft size={18} /> Volver a edición
-            </button>
+            <div className="flex justify-between items-center pt-8 border-t border-slate-100 print:hidden">
+                <button onClick={prevStep} className="text-slate-400 font-bold hover:text-slate-600 transition flex items-center gap-2">
+                    <ArrowLeft size={18} /> Volver a edición
+                </button>
+
+                <button
+                    onClick={() => {
+                        resetProject();
+                        window.location.href = '/';
+                    }}
+                    className="bg-slate-100 text-slate-600 px-8 py-3 rounded-xl font-black hover:bg-slate-200 transition uppercase tracking-widest text-xs"
+                >
+                    Volver al Dashboard
+                </button>
+            </div>
         </div>
     );
 };

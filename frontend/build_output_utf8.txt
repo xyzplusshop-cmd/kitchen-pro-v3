@@ -1,0 +1,62 @@
+﻿
+> frontend@0.0.0 build
+> tsc -b && vite build
+
+[36mvite v7.3.0 [32mbuilding client environment for production...[36m[39m
+transforming...
+[32mΓ£ô[39m 1054 modules transformed.
+node.exe : 
+[31mΓ£ù[39m Build 
+failed in 11.94s
+At line:1 char:1
++ & "C:\Program 
+Files\nodejs/node.exe" 
+"C:\Program 
+Files\nodejs/node_mo ...
++ ~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo      
+        : NotSpecified  
+  : ([31mΓ£ù[39m Bu   
+ ild failed in 11.94    
+s:String) [], Remot    
+eException
+    + FullyQualifiedErr 
+   orId : NativeComman  
+  dError
+ 
+[31merror during build:
+[31mCould not resolve "
+./icons/fingerprint-patt
+ern.js" from "node_modul
+es/lucide-react/dist/esm
+/lucide-react.js"[31m
+file: [36mC:/Users/Andy
+/Desktop/XYZ Plus/fronte
+nd/node_modules/lucide-r
+eact/dist/esm/lucide-rea
+ct.js[31m
+    at getRollupError (f
+ile:///C:/Users/Andy/Des
+ktop/XYZ%20Plus/frontend
+/node_modules/rollup/dis
+t/es/shared/parseAst.js:
+401:41)
+    at error (file:///C:
+/Users/Andy/Desktop/XYZ%
+20Plus/frontend/node_mod
+ules/rollup/dist/es/shar
+ed/parseAst.js:397:42)
+    at ModuleLoader.hand
+leInvalidResolvedId (fil
+e:///C:/Users/Andy/Deskt
+op/XYZ%20Plus/frontend/n
+ode_modules/rollup/dist/
+es/shared/node-entry.js:
+21661:24)
+    at file:///C:/Users/
+Andy/Desktop/XYZ%20Plus/
+frontend/node_modules/ro
+llup/dist/es/shared/node
+-entry.js:21621:26[39m

@@ -1,4 +1,9 @@
 import { create } from 'zustand';
+import axios from 'axios';
+
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:4000';
+axios.defaults.withCredentials = true; // Ensure cookies are sent
+
 
 interface Module {
     id: string;
@@ -10,7 +15,26 @@ interface Module {
     drawerCount: number;
     hingeType: string;
     sliderType: string;
+    hingeId?: string;
+    sliderId?: string;
+    // Parámetros por módulo (pueden sobrescribir los globales si se desea en el futuro)
+    height?: number;
+    depth?: number;
+    customPieces?: any[] | null;
+    templateId?: string;
+    drawerSystemId?: string;
 }
+
+export interface HardwareItem {
+    id: string;
+    name: string;
+    category: 'BISAGRA' | 'CORREDERA' | 'OTROS';
+    compatibility: string[];
+    discountRules: any;
+    price: number;
+    brand?: string;
+}
+
 
 interface ProjectState {
     projectName: string;
@@ -45,7 +69,20 @@ interface ProjectState {
     // Módulos
     modules: Module[];
 
+    // Parámetros Técnicos Globales (NUEVO)
+    baseHeight: number;
+    plinthHeight: number;
+    wallHeight: number;
+    baseDepth: number;
+    wallDepth: number;
+    doorInstallationType: 'FULL_OVERLAY' | 'INSET';
+    doorGap: number;
+    drawerInstallationType: 'EXTERNAL' | 'INSET';
+
+    hardwareCatalog: HardwareItem[];
+
     // Actions
+    fetchHardware: () => Promise<void>;
     setProjectData: (data: { projectName: string; clientName: string }) => void;
     setSpaceData: (length: number) => void;
     setApplianceData: (data: {
@@ -67,6 +104,20 @@ interface ProjectState {
     nextStep: () => void;
     prevStep: () => void;
     goToStep: (step: number) => void;
+    resetProject: () => void;
+    setTechnicalConfig: (config: Partial<{
+        baseHeight: number;
+        plinthHeight: number;
+        wallHeight: number;
+        baseDepth: number;
+        wallDepth: number;
+        doorInstallationType: 'FULL_OVERLAY' | 'INSET';
+        doorGap: number;
+        drawerInstallationType: 'EXTERNAL' | 'INSET';
+    }>) => void;
+    loadProject: (project: any) => void;
+    updateModuleCustomPieces: (moduleId: string, pieces: any[]) => void;
+    replicateCustomPieces: (sourceModuleId: string, changedPieceNames: string[]) => Promise<void>;
 
     // Computations
     getRemainingSpace: (category: 'TOWER' | 'BASE' | 'WALL') => number;
@@ -96,6 +147,29 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
 
     stoveHoodMode: 'GAP',
     hoodWidth: 600,
+
+    // Valores por defecto profesionales
+    baseHeight: 720,
+    plinthHeight: 100,
+    wallHeight: 720,
+    baseDepth: 560,
+    wallDepth: 320,
+    doorInstallationType: 'FULL_OVERLAY',
+    doorGap: 3,
+    drawerInstallationType: 'EXTERNAL',
+
+    hardwareCatalog: [],
+
+    fetchHardware: async () => {
+        try {
+            const res = await axios.get(`${API_BASE_URL}/api/hardware`);
+            if (res.data.success) {
+                set({ hardwareCatalog: res.data.items });
+            }
+        } catch (error) {
+            console.error('Error fetching hardware:', error);
+        }
+    },
 
     modules: [],
 
@@ -128,7 +202,20 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
         return { modules: recalculateWidths(newModules, state.linearLength, state) };
     }),
     updateModule: (id, data) => set((state) => {
-        const newModules = state.modules.map((m) => m.id === id ? { ...m, ...data } : m);
+        const newModules = state.modules.map((m) => {
+            if (m.id === id) {
+                const updated = { ...m, ...data };
+                // User requirement: Step 5 (apertures) overrides manual edits for those pieces
+                if (m.customPieces && (data.doorCount !== undefined || data.drawerCount !== undefined || data.hingeId !== undefined || data.sliderId !== undefined || data.drawerSystemId !== undefined)) {
+                    // When aperture config changes, we invalidate customPieces to force a fresh technical generation 
+                    // that respects the new door/drawer count.
+                    // This matches the user's statement: "los datos se reescribiran cuando se seleccione la cantidad"
+                    return { ...updated, customPieces: null };
+                }
+                return updated;
+            }
+            return m;
+        });
         return { modules: recalculateWidths(newModules, state.linearLength, state) };
     }),
     toggleModuleFixed: (id) => set((state) => {
@@ -136,7 +223,27 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
         return { modules: recalculateWidths(newModules, state.linearLength, state) };
     }),
     updateModuleWidth: (id, width) => set((state) => {
-        const newModules = state.modules.map((m) => m.id === id ? { ...m, width: Number(width), isFixed: true } : m);
+        const newModules = state.modules.map((m) => {
+            if (m.id === id) {
+                const numWidth = Number(width);
+                const widthDiff = numWidth - m.width;
+                const updated = { ...m, width: numWidth, isFixed: true };
+
+                // If module width changes manually in the Wizard, we adjust width-dependent custom pieces
+                if (m.customPieces && m.customPieces.length > 0) {
+                    updated.customPieces = m.customPieces.map(p => {
+                        const name = p.name.toLowerCase();
+                        // Adjust pieces that span the horizontal width (excluding sides)
+                        if (name.includes('piso') || name.includes('amarre') || name.includes('techo') || name.includes('frente') || name.includes('puerta') || name.includes('fondo')) {
+                            return { ...p, finalWidth: Math.round((p.finalWidth + (name.includes('puerta') ? widthDiff / (m.doorCount || 1) : widthDiff)) * 10) / 10 };
+                        }
+                        return p;
+                    });
+                }
+                return updated;
+            }
+            return m;
+        });
         return { modules: recalculateWidths(newModules, state.linearLength, state) };
     }),
     removeModule: (id) => set((state) => {
@@ -147,6 +254,117 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     nextStep: () => set((state) => ({ currentStep: state.currentStep + 1 })),
     prevStep: () => set((state) => ({ currentStep: Math.max(1, state.currentStep - 1) })),
     goToStep: (step) => set({ currentStep: step }),
+    resetProject: () => set({
+        projectName: '',
+        clientName: '',
+        linearLength: 0,
+        shape: 'LINEAL',
+        currentStep: 1,
+        hasStove: false,
+        stoveWidth: 600,
+        hasSink: false,
+        sinkWidth: 600,
+        stoveHoodMode: 'GAP',
+        hoodWidth: 600,
+        materialColor: 'Blanco Frost',
+        boardThickness: 18,
+        edgeRuleDoors: 'PVC 2mm',
+        edgeRuleVisible: 'PVC 0.4mm',
+        edgeRuleInternal: 'Ninguno',
+        plinthLength: 0,
+        countertopLength: 0,
+        baseHeight: 720,
+        plinthHeight: 100,
+        wallHeight: 720,
+        baseDepth: 560,
+        wallDepth: 320,
+        doorInstallationType: 'FULL_OVERLAY',
+        doorGap: 3,
+        drawerInstallationType: 'EXTERNAL',
+        modules: []
+    }),
+    setTechnicalConfig: (config) => set((state) => ({ ...state, ...config })),
+    loadProject: (project) => set((state) => ({
+        ...state,
+        projectName: project.name,
+        clientName: project.clientName || '',
+        linearLength: project.linearLength,
+        modules: project.modules,
+        currentStep: 1,
+        // Carga de config si existe
+        ...(project.config || {})
+    })),
+    updateModuleCustomPieces: (moduleId, pieces) => set((state) => ({
+        modules: state.modules.map(m => m.id === moduleId ? { ...m, customPieces: pieces } : m)
+    })),
+    replicateCustomPieces: async (sourceModuleId, changedPieceNames) => {
+        const state = get();
+        const sourceModule = state.modules.find(m => m.id === sourceModuleId);
+        if (!sourceModule || !sourceModule.customPieces || !sourceModule.templateId) return;
+
+        // Procesar todos los módulos en paralelo para mayor velocidad
+        const updatedModules = await Promise.all(state.modules.map(async (m) => {
+            // Solo replicar en módulos del mismo modelo (templateId) que NO sean el origen
+            if (m.templateId === sourceModule.templateId && m.id !== sourceModuleId) {
+                let currentPieces = m.customPieces;
+
+                // CRITICAL FIX: Si el módulo destino no tiene piezas personalizadas, 
+                // debemos obtener sus piezas estándar primero antes de parchar los cambios.
+                if (!currentPieces || currentPieces.length === 0) {
+                    try {
+                        const res = await axios.post(`${API_BASE_URL}/api/generate-pieces`, {
+                            module: m,
+                            boardThickness: state.boardThickness,
+                            edgeRules: {
+                                doors: state.edgeRuleDoors,
+                                visible: state.edgeRuleVisible,
+                                internal: state.edgeRuleInternal
+                            },
+                            config: {
+                                baseHeight: state.baseHeight,
+                                plinthHeight: state.plinthHeight,
+                                wallHeight: state.wallHeight,
+                                baseDepth: state.baseDepth,
+                                wallDepth: state.wallDepth,
+                                doorInstallationType: state.doorInstallationType,
+                                doorGap: state.doorGap,
+                                drawerInstallationType: state.drawerInstallationType
+                            }
+                        });
+                        if (res.data.success) {
+                            currentPieces = res.data.pieces;
+                        } else {
+                            return m; // Fallback al original si falla
+                        }
+                    } catch (error) {
+                        console.error(`Error fetching standard pieces for module ${m.id} during replication:`, error);
+                        return m;
+                    }
+                }
+
+                if (!currentPieces) return m;
+
+                const newCustom = [...currentPieces];
+
+                // Smart Merge Selectivo: Solo sobreescribir las piezas que cambiaron en la sesión origen
+                sourceModule.customPieces?.forEach(sourcePiece => {
+                    if (changedPieceNames.includes(sourcePiece.name)) {
+                        const idx = newCustom.findIndex(p => p.name === sourcePiece.name);
+                        if (idx !== -1) {
+                            newCustom[idx] = { ...sourcePiece };
+                        } else {
+                            newCustom.push({ ...sourcePiece });
+                        }
+                    }
+                });
+
+                return { ...m, customPieces: newCustom };
+            }
+            return m;
+        }));
+
+        set({ modules: updatedModules });
+    },
 
     getRemainingSpace: (category) => {
         const { linearLength, hasStove, stoveWidth, hasSink, sinkWidth, modules, stoveHoodMode, hoodWidth } = get();

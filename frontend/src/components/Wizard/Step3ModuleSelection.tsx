@@ -1,6 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useProjectStore } from '../../store/useProjectStore';
-import { ArrowLeft, Plus, Trash2, Info, Lock, Unlock, Settings2, Layout, LayoutGrid, Layers } from 'lucide-react';
+import { ArrowLeft, Plus, Trash2, Info, Lock, Unlock, Settings2, Layout, LayoutGrid, Layers, Settings, FileText, CheckCircle2, AlertCircle } from 'lucide-react';
+import axios from 'axios';
+import { CutlistEditorModal } from './CutlistEditorModal';
 
 export const Step3ModuleSelection = () => {
     const {
@@ -10,27 +12,35 @@ export const Step3ModuleSelection = () => {
     } = useProjectStore();
 
     const [activeTab, setActiveTab] = useState<'TOWER' | 'BASE' | 'WALL'>('BASE');
+    const [dbTemplates, setDbTemplates] = useState<any[]>([]);
+    const [isLoading, setIsLoading] = useState(false);
+    const [editingModuleId, setEditingModuleId] = useState<string | null>(null);
 
-    const catalog = [
-        // CATEGORIA TORRE
-        { type: 'TOWER', name: 'Despensa / Torre', defaultWidth: 600, category: 'TOWER' },
-        { type: 'TOWER_FRIDGE', name: 'Espacio Nevera', defaultWidth: 800, category: 'TOWER' },
-        // CATEGORIA BAJA
-        { type: 'BASE', name: 'Módulo Base', defaultWidth: 600, category: 'BASE' },
-        { type: 'DRAWER', name: 'Gavetero', defaultWidth: 600, category: 'BASE' },
-        { type: 'MUEBLE_FREGADERO', name: 'Mueble Fregadero', defaultWidth: 800, category: 'BASE' },
-        // CATEGORIA AEREA
-        { type: 'WALL', name: 'Alacena Aérea', defaultWidth: 600, category: 'WALL' },
-        { type: 'WALL_OPEN', name: 'Repisa Abierta', defaultWidth: 600, category: 'WALL' },
-        { type: 'MUEBLE_CAMPANA', name: 'Mueble Campana', defaultWidth: 600, category: 'WALL' },
-    ];
+    useEffect(() => {
+        const fetchTemplates = async () => {
+            setIsLoading(true);
+            try {
+                const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:4000';
+                const res = await axios.get(`${apiBaseUrl}/api/module-templates?zona=${activeTab}`);
+                if (res.data.success) {
+                    setDbTemplates(res.data.items);
+                }
+            } catch (error) {
+                console.error('Error fetching templates:', error);
+            } finally {
+                setIsLoading(false);
+            }
+        };
+        fetchTemplates();
+    }, [activeTab]);
 
-    const handleAddModule = (item: any) => {
+    const handleAddModule = (template: any) => {
         addModule({
-            type: item.type,
-            category: item.category,
-            width: item.defaultWidth,
-            isFixed: item.type === 'MUEBLE_CAMPANA' // El mueble campana nace fijo
+            type: template.nombre,
+            category: template.zona as any,
+            width: template.ancho || 600,
+            templateId: template.id,
+            isFixed: false
         });
     };
 
@@ -67,19 +77,25 @@ export const Step3ModuleSelection = () => {
                 </h3>
 
                 <div className="space-y-3">
-                    {catalog.filter(i => i.category === activeTab).map(item => (
-                        <button
-                            key={item.type}
-                            onClick={() => handleAddModule(item)}
-                            className="w-full flex items-center justify-between p-4 rounded-xl border-2 border-slate-100 hover:border-blue-500 hover:bg-blue-50 transition group"
-                        >
-                            <div className="text-left">
-                                <span className="block font-bold text-slate-700 group-hover:text-blue-700">{item.name}</span>
-                                <span className="text-xs text-slate-500">{item.type === 'MUEBLE_CAMPANA' ? 'Ancho Fijo' : 'Auto-ajustable'}</span>
-                            </div>
-                            <Plus size={18} className="text-slate-400 group-hover:text-blue-500" />
-                        </button>
-                    ))}
+                    {isLoading ? (
+                        <div className="py-10 text-center text-slate-400 text-sm animate-pulse">Cargando catálogo...</div>
+                    ) : dbTemplates.length > 0 ? (
+                        dbTemplates.map(item => (
+                            <button
+                                key={item.id}
+                                onClick={() => handleAddModule(item)}
+                                className="w-full flex items-center justify-between p-4 rounded-xl border-2 border-slate-100 hover:border-blue-500 hover:bg-blue-50 transition group"
+                            >
+                                <div className="text-left">
+                                    <span className="block font-bold text-slate-700 group-hover:text-blue-700">{item.nombre}</span>
+                                    <span className="text-xs text-slate-500 font-mono text-blue-500">{item.modelo}</span>
+                                </div>
+                                <Plus size={18} className="text-slate-400 group-hover:text-blue-500" />
+                            </button>
+                        ))
+                    ) : (
+                        <div className="py-10 text-center text-slate-400 text-sm italic">No hay plantillas en esta zona.</div>
+                    )}
                 </div>
 
                 <div className="mt-8 p-4 bg-blue-50 rounded-xl border border-blue-100">
@@ -173,7 +189,14 @@ export const Step3ModuleSelection = () => {
                                     <Settings2 size={20} className={m.isFixed ? 'text-slate-600' : 'text-blue-600'} />
                                 </div>
                                 <div>
-                                    <h4 className={`font-bold text-slate-800 text-sm ${!m.isFixed ? 'text-blue-700 italic' : ''}`}>{m.type.replace('_', ' ')}</h4>
+                                    <div className="flex items-center gap-2">
+                                        <h4 className={`font-bold text-slate-800 text-sm ${!m.isFixed ? 'text-blue-700 italic' : ''}`}>{m.type.replace('_', ' ')}</h4>
+                                        {m.customPieces && (
+                                            <span className="flex items-center gap-1 text-[8px] font-black text-orange-600 bg-orange-100 px-1.5 py-0.5 rounded uppercase tracking-tighter">
+                                                <AlertCircle size={8} /> Modificado
+                                            </span>
+                                        )}
+                                    </div>
                                     <div className="flex items-center gap-2 mt-1">
                                         {m.isFixed ? (
                                             <div className="flex items-center gap-2">
@@ -196,6 +219,13 @@ export const Step3ModuleSelection = () => {
                             </div>
 
                             <div className="flex gap-2">
+                                <button
+                                    onClick={() => setEditingModuleId(m.id)}
+                                    className={`p-2 rounded-lg border transition ${m.customPieces ? 'bg-orange-500 border-orange-600 text-white shadow-lg shadow-orange-100' : 'bg-white border-slate-200 text-slate-400 hover:bg-slate-50'}`}
+                                    title={m.customPieces ? "Personalizado Manualmente" : "Configurar Piezas"}
+                                >
+                                    <Settings size={16} />
+                                </button>
                                 <button
                                     onClick={() => toggleModuleFixed(m.id)}
                                     className={`p-2 rounded-lg border transition ${m.isFixed ? 'bg-blue-600 border-blue-600 text-white' : 'bg-white border-slate-200 text-slate-400'}`}
@@ -230,6 +260,14 @@ export const Step3ModuleSelection = () => {
                     </button>
                 </div>
             </div>
+
+            {/* Modal de Edición Granular */}
+            {editingModuleId && (
+                <CutlistEditorModal
+                    moduleId={editingModuleId}
+                    onClose={() => setEditingModuleId(null)}
+                />
+            )}
         </div>
     );
 };

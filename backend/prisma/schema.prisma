@@ -13,6 +13,7 @@ model User {
   email     String    @unique
   password  String
   name      String?
+  role      String    @default("USER") // ADMIN, USER
   projects  Project[]
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
@@ -27,9 +28,61 @@ model Project {
   linearLength   Float    // Longitud total de la cocina lineal
   openingSystem  String   @default("HANDLE") // HANDLE, GOLA, PUSH
   defaultEdgeId  String?
+  thumbnail      String?  // URL o Base64 de la previsualización
+  config         Json?    // Alturas, profundidades, tipo de puerta
   modules        Module[]
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
+}
+
+model HardwareItem {
+  id              String   @id @default(cuid())
+  name            String
+  category        String   // BISAGRA, CORREDERA, OTROS
+  compatibility   String[] // FULL_OVERLAY, HALF_OVERLAY, INSET, STANDARD, etc.
+  discountRules   Json     // side_clearance, depth_clearance, etc.
+  price           Float    @default(0)
+  brand           String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model DrawerSystem {
+  id                  String   @id @default(cuid())
+  name                String
+  brand               String?
+  isMetal             Boolean  @default(false)
+  slideClearance      Float    @default(12.7)
+  bottomConstruction  String   @default("RANURADO") // RANURADO, CLAVADO
+  backendClearance    Float    @default(10)
+  price               Float    @default(0)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+}
+
+model ModuleTemplate {
+  id              String   @id @default(cuid())
+  modelo          String   // Código del modelo (ej: MA-01, MB-02, DT-01)
+  nombre          String   // Nombre descriptivo
+  zona            String   // WALL, BASE, TOWER, ISLAND
+  tipoApertura    String?  // PUSH, GOLA, JALADORES (se define aquí)
+  piezas          Json     // Estructura JSON con todas las piezas y dimensiones
+  thumbnail       String?
+  descripcion     String?
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+
+model LegSystem {
+  id        String   @id @default(cuid())
+  name      String
+  height    Float
+  price     Float
+  brand     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model Module {
@@ -44,9 +97,16 @@ model Module {
   drawerCount   Int      @default(0)
   hingeType     String   @default("Estándar")
   sliderType    String   @default("Estándar")
+  hingeId       String?  // ID del herraje inteligente seleccionado
+  sliderId      String?  // ID de la corredera inteligente seleccionada
+  drawerSystemId String? // ID del sistema de cajón seleccionado
   height        Float    @default(720)
   depth         Float    @default(560)
   openingSystem String?
+  templateId    String?  // Reference to ModuleTemplate
+  legSystemId   String?  // Reference to LegSystem
+  customPieces  Json?    // Custom piece edits (Stage 3)
+  calculationRules Json? // Applied calculation rules
   pieces        Piece[]
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt

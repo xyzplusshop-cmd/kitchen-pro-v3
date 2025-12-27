@@ -1,16 +1,31 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useProjectStore } from '../../store/useProjectStore';
-import { ArrowLeft, Check, ChevronRight, Settings2, Box, Info } from 'lucide-react';
+import { ArrowLeft, Check, ChevronRight, Settings2, Box, Info, Cpu } from 'lucide-react';
 
 export const Step4DetailedConfig = () => {
-    const { modules, updateModule, nextStep, prevStep } = useProjectStore();
+    const {
+        modules, updateModule, nextStep, prevStep,
+        doorInstallationType, hardwareCatalog, fetchHardware
+    } = useProjectStore();
+
+    useEffect(() => {
+        if (hardwareCatalog.length === 0) {
+            fetchHardware();
+        }
+    }, []);
     const [selectedModuleId, setSelectedModuleId] = useState(modules[0]?.id || '');
 
     const selectedModule = modules.find(m => m.id === selectedModuleId);
     const moduleIndex = modules.findIndex(m => m.id === selectedModuleId);
 
-    const hingeOptions = ['Estándar', 'Cierre Suave', 'Push to Open'];
-    const sliderOptions = ['Estándar', 'Cierre Suave', 'Telescópica'];
+    // Filtrado Inteligente de Herrajes
+    const filteredHinges = hardwareCatalog.filter(h =>
+        h.category === 'BISAGRA' && h.compatibility.includes(doorInstallationType)
+    );
+
+    const filteredSliders = hardwareCatalog.filter(s =>
+        s.category === 'CORREDERA'
+    ); // Aquí se podría filtrar por "INSET_DRAWER" si el cajón fuera interno
 
     if (modules.length === 0) {
         return (
@@ -133,26 +148,56 @@ export const Step4DetailedConfig = () => {
 
                             {(selectedModule?.doorCount || 0) > 0 && (
                                 <div className="space-y-2">
-                                    <label className="text-xs font-bold text-slate-400 uppercase">Sistema de Bisagras</label>
+                                    <div className="flex justify-between items-center">
+                                        <label className="text-xs font-bold text-slate-400 uppercase">Bisagras Inteligentes</label>
+                                        <div className="flex items-center gap-1 bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full text-[10px] font-black italic">
+                                            <Cpu size={10} /> AUTO-FILTER: {doorInstallationType}
+                                        </div>
+                                    </div>
                                     <select
                                         className="w-full p-3 rounded-lg border bg-slate-50 font-semibold text-slate-700 focus:ring-2 focus:ring-blue-500 outline-none"
-                                        value={selectedModule?.hingeType}
-                                        onChange={(e) => updateModule(selectedModuleId, { hingeType: e.target.value })}
+                                        value={selectedModule?.hingeId || ''}
+                                        onChange={(e) => {
+                                            const item = filteredHinges.find(h => h.id === e.target.value);
+                                            updateModule(selectedModuleId, {
+                                                hingeId: e.target.value,
+                                                hingeType: item?.name || 'Estándar'
+                                            });
+                                        }}
                                     >
-                                        {hingeOptions.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+                                        <option value="">Selecciona Herraje...</option>
+                                        {filteredHinges.map(h => (
+                                            <option key={h.id} value={h.id}>
+                                                {h.name} {h.brand ? `(${h.brand})` : ''} - ${h.price.toLocaleString()}
+                                            </option>
+                                        ))}
+
                                     </select>
+                                    {filteredHinges.length === 0 && (
+                                        <p className="text-[10px] text-red-500 font-bold">⚠️ No hay bisagras compatibles con {doorInstallationType}</p>
+                                    )}
                                 </div>
                             )}
 
                             {(selectedModule?.drawerCount || 0) > 0 && (
-                                <div className="space-y-2">
+                                <div className="space-y-3">
                                     <label className="text-xs font-bold text-slate-400 uppercase">Sistema de Correderas</label>
                                     <select
                                         className="w-full p-3 rounded-lg border bg-slate-50 font-semibold text-slate-700 focus:ring-2 focus:ring-blue-500 outline-none"
-                                        value={selectedModule?.sliderType}
-                                        onChange={(e) => updateModule(selectedModuleId, { sliderType: e.target.value })}
+                                        value={selectedModule?.sliderId || ''}
+                                        onChange={(e) => {
+                                            const item = filteredSliders.find(s => s.id === e.target.value);
+                                            updateModule(selectedModuleId, {
+                                                sliderId: e.target.value,
+                                                sliderType: item?.name || 'Estándar'
+                                            });
+                                        }}
                                     >
-                                        {sliderOptions.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+                                        <option value="">Selecciona Corredera...</option>
+                                        {filteredSliders.map(s => (
+                                            <option key={s.id} value={s.id}>{s.name} - ${s.price.toLocaleString()}</option>
+                                        ))}
+
                                     </select>
                                 </div>
                             )}
