@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { ArrowLeft, Plus, Upload, Edit2, Trash2, X, Save } from 'lucide-react';
+import { NewModuleTemplateModal } from './NewModuleTemplateModal';
 
 interface ModuleTemplate {
     id: string;
@@ -174,12 +175,24 @@ export const ModuleTemplateCatalog = ({ zone, zoneName, color }: ModuleTemplateC
                 </div>
             </main>
 
-            {/* Create/Edit Modal */}
-            {showModal && (
+
+            {/* Smart Wizard Modal - NEW */}
+            {showModal && !editingItem && (
+                <NewModuleTemplateModal
+                    onClose={() => setShowModal(false)}
+                    onSuccess={() => {
+                        fetchItems();
+                        setShowModal(false);
+                    }}
+                />
+            )}
+
+            {/* Edit Modal - Keep old one ONLY for editing existing templates */}
+            {showModal && editingItem && (
                 <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
                     <div className="bg-white rounded-2xl p-8 max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
                         <div className="flex justify-between items-center mb-6">
-                            <h2 className="text-2xl font-black text-slate-800">{editingItem ? 'EDITAR' : 'CREAR'} PLANTILLA</h2>
+                            <h2 className="text-2xl font-black text-slate-800">EDITAR PLANTILLA</h2>
                             <button onClick={() => { setShowModal(false); setEditingItem(null); }} className="p-2 hover:bg-slate-100 rounded-lg">
                                 <X size={20} />
                             </button>

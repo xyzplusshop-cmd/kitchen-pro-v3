@@ -197,8 +197,55 @@ export const Step4DetailedConfig = () => {
                                         {filteredSliders.map(s => (
                                             <option key={s.id} value={s.id}>{s.name} - ${s.price.toLocaleString()}</option>
                                         ))}
-
                                     </select>
+                                </div>
+                            )}
+
+                            {/* Sección C: Estructura Trasera (Módulos Base/Aéreos/Torres) */}
+                            {(selectedModule?.category === 'BASE' || selectedModule?.category === 'WALL' || selectedModule?.category === 'TOWER') && (
+                                <div className="space-y-4 pt-4 border-t border-slate-100">
+                                    <label className="text-xs font-bold text-slate-400 uppercase">Configuración de Trasera</label>
+                                    <div className="flex gap-2">
+                                        {[
+                                            { id: 'INSET', label: 'Embutido' },
+                                            { id: 'NAILED', label: 'Clavado' },
+                                            { id: 'GROOVED', label: 'Ranurado' }
+                                        ].map(opt => (
+                                            <button
+                                                key={opt.id}
+                                                onClick={() => updateModule(selectedModuleId, { backMountingType: opt.id as any })}
+                                                className={`flex-1 py-2 rounded-lg border-2 font-bold text-[10px] transition ${(selectedModule?.backMountingType || 'INSET') === opt.id
+                                                        ? 'border-blue-500 bg-blue-50 text-blue-700'
+                                                        : 'border-slate-100 bg-slate-50 text-slate-400 hover:border-slate-200'
+                                                    }`}
+                                            >
+                                                {opt.label}
+                                            </button>
+                                        ))}
+                                    </div>
+
+                                    {(selectedModule?.backMountingType === 'GROOVED') && (
+                                        <div className="grid grid-cols-2 gap-3 animate-in fade-in slide-in-from-top-1 duration-200">
+                                            <div>
+                                                <label className="block text-[10px] font-black text-slate-400 uppercase mb-1">Cejilla (Ranura mm)</label>
+                                                <input
+                                                    type="number"
+                                                    className="w-full px-3 py-2 rounded-lg border border-slate-200 bg-slate-50 focus:ring-2 focus:ring-blue-500 outline-none text-xs"
+                                                    value={selectedModule?.grooveDepth ?? 9}
+                                                    onChange={(e) => updateModule(selectedModuleId, { grooveDepth: Number(e.target.value) })}
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="block text-[10px] font-black text-slate-400 uppercase mb-1">Aire (Pared mm)</label>
+                                                <input
+                                                    type="number"
+                                                    className="w-full px-3 py-2 rounded-lg border border-slate-200 bg-slate-50 focus:ring-2 focus:ring-blue-500 outline-none text-xs"
+                                                    value={selectedModule?.rearGap ?? 18}
+                                                    onChange={(e) => updateModule(selectedModuleId, { rearGap: Number(e.target.value) })}
+                                                />
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
                             )}
 

@@ -24,6 +24,9 @@ app.use((req, res, next) => {
 });
 
 import { PrismaClient } from '@prisma/client';
+import moduleTemplatesRouter from './routes/moduleTemplates';
+import { generateModuleCode, generatePieceCode } from './utils/codeGenerator';
+
 const prisma = new PrismaClient();
 
 // Verificación de conexión a la Base de Datos al arrancar
@@ -321,6 +324,9 @@ app.post('/api/materials/import', protect, async (req: any, res) => {
 });
 
 // === MODULE TEMPLATES CRUD ENDPOINTS ===
+// DEPRECATED: These endpoints are now handled by routes/moduleTemplates.ts
+// with smart calculation engine. Commented out to prevent conflicts.
+/*
 app.get('/api/module-templates', async (req, res) => {
     try {
         const { zona } = req.query;
@@ -384,6 +390,7 @@ app.post('/api/module-templates/import', protect, async (req: any, res) => {
         res.status(500).json({ success: false, error: error.message });
     }
 });
+*/
 
 // === LEG SYSTEMS CRUD ENDPOINTS ===
 app.get('/api/leg-systems', async (req, res) => {
@@ -444,6 +451,192 @@ app.post('/api/leg-systems/import', protect, async (req: any, res) => {
     }
 });
 
+// === EDGE BANDS CRUD ENDPOINTS (Mapped to Material type: EDGE) ===
+app.get('/api/edge-bands', async (req, res) => {
+    try {
+        const items = await prisma.material.findMany({
+            where: { type: 'EDGE' },
+            orderBy: { name: 'asc' }
+        });
+        res.json({ success: true, items });
+    } catch (error: any) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+app.post('/api/edge-bands', protect, async (req: any, res) => {
+    try {
+        const item = await prisma.material.create({
+            data: { ...req.body, type: 'EDGE' }
+        });
+        res.json({ success: true, item });
+    } catch (error: any) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+app.put('/api/edge-bands/:id', protect, async (req: any, res) => {
+    try {
+        const item = await prisma.material.update({
+            where: { id: req.params.id, type: 'EDGE' },
+            data: req.body
+        });
+        res.json({ success: true, item });
+    } catch (error: any) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+app.delete('/api/edge-bands/:id', protect, async (req: any, res) => {
+    try {
+        await prisma.material.delete({
+            where: { id: req.params.id, type: 'EDGE' }
+        });
+        res.json({ success: true });
+    } catch (error: any) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// === TOOLS CRUD ENDPOINTS ===
+app.get('/api/tools', async (req, res) => {
+    try {
+        const items = await prisma.tool.findMany({
+            orderBy: { name: 'asc' }
+        });
+        res.json({ success: true, items });
+    } catch (error: any) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+app.post('/api/tools', protect, async (req: any, res) => {
+    try {
+        const item = await prisma.tool.create({
+            data: req.body
+        });
+        res.json({ success: true, item });
+    } catch (error: any) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+app.put('/api/tools/:id', protect, async (req: any, res) => {
+    try {
+        const item = await prisma.tool.update({
+            where: { id: req.params.id },
+            data: req.body
+        });
+        res.json({ success: true, item });
+    } catch (error: any) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+app.delete('/api/tools/:id', protect, async (req: any, res) => {
+    try {
+        await prisma.tool.delete({
+            where: { id: req.params.id }
+        });
+        res.json({ success: true });
+    } catch (error: any) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// === ACCESSORIES CRUD ENDPOINTS ===
+app.get('/api/accessories', async (req, res) => {
+    try {
+        const items = await prisma.accessory.findMany({
+            orderBy: { name: 'asc' }
+        });
+        res.json({ success: true, items });
+    } catch (error: any) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+app.post('/api/accessories', protect, async (req: any, res) => {
+    try {
+        const item = await prisma.accessory.create({
+            data: req.body
+        });
+        res.json({ success: true, item });
+    } catch (error: any) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+app.put('/api/accessories/:id', protect, async (req: any, res) => {
+    try {
+        const item = await prisma.accessory.update({
+            where: { id: req.params.id },
+            data: req.body
+        });
+        res.json({ success: true, item });
+    } catch (error: any) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+app.delete('/api/accessories/:id', protect, async (req: any, res) => {
+    try {
+        await prisma.accessory.delete({
+            where: { id: req.params.id }
+        });
+        res.json({ success: true });
+    } catch (error: any) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// === MACHINES ENDPOINTS ===
+app.get('/api/machines', async (req, res) => {
+    try {
+        const items = await prisma.machine.findMany();
+        res.json({ success: true, items });
+    } catch (error: any) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+app.put('/api/machines/:id', protect, async (req: any, res) => {
+    try {
+        const item = await prisma.machine.update({
+            where: { id: req.params.id },
+            data: req.body
+        });
+        res.json({ success: true, item });
+    } catch (error: any) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// === GLOBAL CONFIG ENDPOINTS ===
+app.get('/api/global-config', async (req, res) => {
+    try {
+        const config = await prisma.globalConfig.findUnique({
+            where: { id: 'singleton' }
+        });
+        res.json({ success: true, config });
+    } catch (error: any) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+app.put('/api/global-config', protect, async (req: any, res) => {
+    try {
+        const config = await prisma.globalConfig.upsert({
+            where: { id: 'singleton' },
+            update: req.body,
+            create: { id: 'singleton', ...req.body }
+        });
+        res.json({ success: true, config });
+    } catch (error: any) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
 // === TIPOS Y CONTEXTO ===
 interface Edges {
     top: number;
@@ -483,7 +676,9 @@ interface EdgeRules {
 interface ProjectData {
     projectName: string;
     linearLength: number;
-    boardThickness: number;
+    boardThickness: number; // Legacy/Fallback
+    carcassThickness: number;
+    frontsThickness: number;
     edgeRules: EdgeRules;
     modules: any[];
     config: {
@@ -492,11 +687,17 @@ interface ProjectData {
         wallHeight: number;
         baseDepth: number;
         wallDepth: number;
+        towerHeight: number;
         doorInstallationType: 'FULL_OVERLAY' | 'INSET';
         doorGap: number;
         drawerInstallationType: 'EXTERNAL' | 'INSET';
+        backMountingType: 'NAILED' | 'GROOVED' | 'INSET';
+        grooveDepth: number;
+        rearGap: number;
         plinthLength?: number;
         countertopLength?: number;
+        carcassThickness?: number;
+        frontsThickness?: number;
     };
 }
 
@@ -506,8 +707,98 @@ const getEdgeThickness = (rule: string): number => {
     return 0;
 };
 
+// === STRETCHERS SYSTEM HELPERS ===
+const generateStretcher = (
+    position: 'Superior' | 'Inferior' | 'Frontal' | 'Trasero',
+    module: any,
+    thickness: number,
+    category: string,
+    moduleHeight: number,
+    mountingConfig?: { backMountingType: string, grooveDepth: number, rearGap: number, backThickness: number }
+) => {
+    const stretcherWidth = 100; // Standard width in mm (can be made configurable)
+
+    // Calculate length (always internal width)
+    const stretcherLength = module.width - (2 * thickness);
+
+    // Calculate depth (finalHeight of the stretcher piece)
+    // If it's a top/bottom/front stretcher, it's horizontal. Its "height" in the cutting list is actually its depth in the module.
+    let finalDepth = stretcherWidth;
+
+    // If we have mounting config, we might need to adjust depth for horizontal stretchers
+    if (mountingConfig && (position === 'Superior' || position === 'Inferior')) {
+        const extDepth = module.depth || 560;
+        finalDepth = mountingConfig.backMountingType === 'GROOVED'
+            ? extDepth - mountingConfig.rearGap - mountingConfig.backThickness
+            : extDepth - mountingConfig.backThickness;
+
+        // Wait, stretchers are usually NOT same depth as the floor. 
+        // But some designs use full-depth stretchers. 
+        // Standard "Amarre" is 100mm wide. 
+        // If it's NOT a full floor, we keep 100mm.
+        // Let's stick to 100mm unless it's the Piso/Techo.
+    }
+
+    const isVertical = position === 'Trasero';
+
+    return {
+        name: `Amarre ${position} ${category}`,
+        finalWidth: stretcherLength,
+        finalHeight: stretcherWidth,
+        edges: { top: 0, bottom: 0, left: 0, right: 0 },
+        quantity: 1,
+        category: category,
+        isStretcher: true,
+        orientation: isVertical ? 'VERTICAL' : 'HORIZONTAL'
+    };
+};
+
+const generateBackPanel = (
+    module: any,
+    thickness: number,
+    category: string,
+    moduleHeight: number,
+    moduleDepth: number,
+    mountingConfig: { backMountingType: string, grooveDepth: number, rearGap: number, backThickness: number }
+) => {
+    const intWidth = module.width - (2 * thickness);
+    const intHeight = moduleHeight - thickness; // Default logic
+
+    let finalWidth = intWidth;
+    let finalHeight = intHeight;
+
+    if (mountingConfig.backMountingType === 'GROOVED') {
+        // Width = InternalWidth + (2 * grooveDepth) - 2mm (Holgura)
+        finalWidth = intWidth + (2 * mountingConfig.grooveDepth) - 2;
+        // Height = InternalHeight + (2 * grooveDepth) - 2mm
+        finalHeight = intHeight + (2 * mountingConfig.grooveDepth) - 2;
+    } else if (mountingConfig.backMountingType === 'INSET') {
+        // INSET: InternalWidth - 1mm
+        finalWidth = intWidth - 1;
+        // Height: Depende de si es BASE (piso) o WALL (piso+techo)
+        const totalIntHeight = category === 'WALL' || category === 'TOWER'
+            ? moduleHeight - (2 * thickness)
+            : moduleHeight - thickness;
+        finalHeight = totalIntHeight - 1;
+    } else {
+        // NAILED: ExternalWidth - 2mm
+        finalWidth = module.width - 2;
+        finalHeight = moduleHeight - 2;
+    }
+
+    return {
+        name: `Fondo ${category}`,
+        finalWidth: Math.round(finalWidth * 10) / 10,
+        finalHeight: Math.round(finalHeight * 10) / 10,
+        edges: { top: 0, bottom: 0, left: 0, right: 0 },
+        quantity: 1,
+        category: category,
+        isBackPanel: true
+    };
+};
+
 // === MOTOR DE GENERACIÓN DE PIEZAS ===
-const generateModulePieces = (module: any, thickness: number, rules: EdgeRules, config: ProjectData['config'], hardwareMap: Map<string, any>) => {
+const generateModulePieces = (module: any, carcassThickness: number, frontsThickness: number, rules: EdgeRules, config: ProjectData['config'], hardwareMap: Map<string, any>) => {
     let pieces: any[] = [];
     const { type, width, category, templateId, customPieces } = module;
 
@@ -516,11 +807,12 @@ const generateModulePieces = (module: any, thickness: number, rules: EdgeRules, 
         return customPieces as any[];
     }
 
-    const hBase = config.baseHeight;
-    const hWall = config.wallHeight;
-    const hTower = 2100;
-    const dBase = config.baseDepth;
-    const dWall = config.wallDepth;
+    // Use module-specific overrides if present, otherwise use global config defaults
+    const hBase = module.height ?? config.baseHeight;
+    const hWall = module.height ?? config.wallHeight;
+    const hTower = module.height ?? config.towerHeight ?? 2100;
+    const dBase = module.depth ?? config.baseDepth;
+    const dWall = module.depth ?? config.wallDepth;
     const doorInstallationType = config.doorInstallationType;
     const isInset = doorInstallationType === 'INSET';
 
@@ -534,9 +826,25 @@ const generateModulePieces = (module: any, thickness: number, rules: EdgeRules, 
     const tVisible = getEdgeThickness(rules.visible);
     const tInternal = getEdgeThickness(rules.internal);
 
+    // Back Mounting Config Extraction
+    const mountingConfig = {
+        backMountingType: module.backMountingType || config.backMountingType || 'INSET',
+        grooveDepth: module.grooveDepth ?? config.grooveDepth ?? 9,
+        rearGap: module.rearGap ?? config.rearGap ?? 18,
+        backThickness: 3 // Standard default
+    };
+
     // BASE MODULE LOGIC
     if (category === 'BASE') {
-        const intWidth = width - (2 * thickness);
+        const intWidth = width - (2 * carcassThickness);
+        let internalDepth = dBase;
+
+        if (mountingConfig.backMountingType === 'GROOVED') {
+            internalDepth = dBase - mountingConfig.rearGap - mountingConfig.backThickness;
+        } else if (mountingConfig.backMountingType === 'NAILED') {
+            internalDepth = dBase - mountingConfig.backThickness;
+        }
+        // INSET: internalDepth = dBase (TotalDepth)
 
         // Lateral Izquierdo (1)
         pieces.push({
@@ -545,7 +853,8 @@ const generateModulePieces = (module: any, thickness: number, rules: EdgeRules, 
             finalHeight: hBase,
             edges: { top: tInternal, bottom: tInternal, left: tVisible, right: tInternal },
             quantity: 1,
-            category: 'BASE'
+            category: 'BASE',
+            thickness: carcassThickness
         });
 
         // Lateral Derecho (1)
@@ -555,25 +864,28 @@ const generateModulePieces = (module: any, thickness: number, rules: EdgeRules, 
             finalHeight: hBase,
             edges: { top: tInternal, bottom: tInternal, left: tVisible, right: tInternal },
             quantity: 1,
-            category: 'BASE'
+            category: 'BASE',
+            thickness: carcassThickness
         });
 
         pieces.push({
             name: 'Piso Base',
             finalWidth: intWidth,
-            finalHeight: dBase,
+            finalHeight: internalDepth,
             edges: { top: tVisible, bottom: tInternal, left: tInternal, right: tInternal },
             quantity: 1,
-            category: 'BASE'
+            category: 'BASE',
+            thickness: carcassThickness
         });
 
         pieces.push({
             name: 'Amarre',
             finalWidth: intWidth,
-            finalHeight: 100,
+            finalHeight: 100, // Standard width
             edges: { top: tInternal, bottom: tInternal, left: tInternal, right: tInternal },
             quantity: 2,
-            category: 'BASE'
+            category: 'BASE',
+            thickness: carcassThickness
         });
 
         // LEGS (Patas) Injection - Stage 2/3 requirement
@@ -587,7 +899,8 @@ const generateModulePieces = (module: any, thickness: number, rules: EdgeRules, 
                 quantity: legAssignment.quantity,
                 category: 'HARDWARE',
                 material: 'ABS/Metal',
-                description: legAssignment.reason
+                description: legAssignment.reason,
+                thickness: 0
             });
         }
 
@@ -609,7 +922,8 @@ const generateModulePieces = (module: any, thickness: number, rules: EdgeRules, 
                 finalHeight: isInset ? hBase - (2 * doorGap) : hBase - 5,
                 edges: { top: tDoors, bottom: tDoors, left: tDoors, right: tDoors },
                 quantity: module.doorCount,
-                category: 'BASE'
+                category: 'BASE',
+                thickness: frontsThickness
             });
         }
 
@@ -626,22 +940,32 @@ const generateModulePieces = (module: any, thickness: number, rules: EdgeRules, 
                     bottomConstruction: 'RANURADO',
                     backendClearance: 10
                 },
-                materialThickness: thickness
+                materialThickness: carcassThickness
             });
-            pieces.push(...drawerPieces);
+            pieces.push(...drawerPieces.map(p => ({ ...p, thickness: p.name.includes('Frente Vista') ? frontsThickness : carcassThickness })));
         }
     }
 
     // WALL MODULE LOGIC
     if (category === 'WALL') {
-        const intWidth = width - (2 * thickness);
+        const intWidth = width - (2 * carcassThickness);
+        let internalDepth = dWall;
+
+        if (mountingConfig.backMountingType === 'GROOVED') {
+            internalDepth = dWall - mountingConfig.rearGap - mountingConfig.backThickness;
+        } else if (mountingConfig.backMountingType === 'NAILED') {
+            internalDepth = dWall - mountingConfig.backThickness;
+        }
+        // INSET: internalDepth = dWall (TotalDepth)
+
         pieces.push({
             name: 'Lateral Izquierdo Aéreo',
             finalWidth: dWall,
             finalHeight: hWall,
             edges: { top: tInternal, bottom: tInternal, left: tVisible, right: tInternal },
             quantity: 1,
-            category: 'WALL'
+            category: 'WALL',
+            thickness: carcassThickness
         });
         pieces.push({
             name: 'Lateral Derecho Aéreo',
@@ -649,15 +973,17 @@ const generateModulePieces = (module: any, thickness: number, rules: EdgeRules, 
             finalHeight: hWall,
             edges: { top: tInternal, bottom: tInternal, left: tVisible, right: tInternal },
             quantity: 1,
-            category: 'WALL'
+            category: 'WALL',
+            thickness: carcassThickness
         });
         pieces.push({
             name: 'Techo/Piso Aéreo',
             finalWidth: intWidth,
-            finalHeight: dWall,
+            finalHeight: internalDepth,
             edges: { top: tVisible, bottom: tInternal, left: tInternal, right: tInternal },
             quantity: 2,
-            category: 'WALL'
+            category: 'WALL',
+            thickness: carcassThickness
         });
 
         if (module.doorCount > 0) {
@@ -677,20 +1003,31 @@ const generateModulePieces = (module: any, thickness: number, rules: EdgeRules, 
                 finalHeight: isInset ? hWall - (2 * doorGap) : hWall - 5,
                 edges: { top: tDoors, bottom: tDoors, left: tDoors, right: tDoors },
                 quantity: module.doorCount,
-                category: 'WALL'
+                category: 'WALL',
+                thickness: frontsThickness
             });
         }
     }
 
     // TOWER MODULE LOGIC
     if (category === 'TOWER') {
+        let internalDepth = dBase;
+
+        if (mountingConfig.backMountingType === 'GROOVED') {
+            internalDepth = dBase - mountingConfig.rearGap - mountingConfig.backThickness;
+        } else if (mountingConfig.backMountingType === 'NAILED') {
+            internalDepth = dBase - mountingConfig.backThickness;
+        }
+        // INSET: internalDepth = dBase (TotalDepth)
+
         pieces.push({
             name: 'Lateral Izquierdo Torre',
             finalWidth: dBase,
             finalHeight: hTower,
             edges: { top: tInternal, bottom: tInternal, left: tVisible, right: tInternal },
             quantity: 1,
-            category: 'TOWER'
+            category: 'TOWER',
+            thickness: carcassThickness
         });
         pieces.push({
             name: 'Lateral Derecho Torre',
@@ -698,23 +1035,68 @@ const generateModulePieces = (module: any, thickness: number, rules: EdgeRules, 
             finalHeight: hTower,
             edges: { top: tInternal, bottom: tInternal, left: tVisible, right: tInternal },
             quantity: 1,
-            category: 'TOWER'
+            category: 'TOWER',
+            thickness: carcassThickness
         });
         pieces.push({
             name: 'Techo/Piso Torre',
-            finalWidth: width - (2 * thickness),
-            finalHeight: dBase,
+            finalWidth: width - (2 * carcassThickness),
+            finalHeight: internalDepth,
             edges: { top: tVisible, bottom: tInternal, left: tInternal, right: tInternal },
             quantity: 2,
-            category: 'TOWER'
+            category: 'TOWER',
+            thickness: carcassThickness
         });
+        const frontGap = 20; // Standard gap
+        const shelfDepth = (mountingConfig.backMountingType === 'INSET'
+            ? dBase - mountingConfig.backThickness
+            : internalDepth) - frontGap;
+
         pieces.push({
             name: 'Estantería Torre',
-            finalWidth: width - (2 * thickness) - 2,
-            finalHeight: dBase - 20,
+            finalWidth: width - (2 * carcassThickness) - 2,
+            finalHeight: Math.round(shelfDepth * 10) / 10,
             edges: { top: tVisible, bottom: tInternal, left: tInternal, right: tInternal },
             quantity: 3,
-            category: 'TOWER'
+            category: 'TOWER',
+            thickness: carcassThickness
+        });
+    }
+
+    // === UNIVERSAL STRETCHERS SYSTEM ===
+    // Applies to ALL module types (BASE, WALL, TOWER)
+    const currentHeight = category === 'BASE' ? hBase : (category === 'WALL' ? hWall : hTower);
+    const currentDepth = category === 'WALL' ? dWall : dBase;
+
+    if (module.hasTopStretcher) {
+        pieces.push({
+            ...generateStretcher('Superior', module, carcassThickness, category, currentHeight, mountingConfig),
+            thickness: carcassThickness
+        });
+    }
+
+    if (module.hasBottomStretcher) {
+        pieces.push({
+            ...generateStretcher('Inferior', module, carcassThickness, category, currentHeight, mountingConfig),
+            thickness: carcassThickness
+        });
+    }
+
+    if (module.hasFrontStretcher) {
+        pieces.push({
+            ...generateStretcher('Frontal', module, carcassThickness, category, currentHeight, mountingConfig),
+            thickness: carcassThickness
+        });
+    }
+
+    // BACK PANEL - Conditional based on hasBackPanel flag
+    // Default to true if not specified (backward compatibility)
+    const shouldHaveBackPanel = module.hasBackPanel !== false;
+
+    if (shouldHaveBackPanel) {
+        pieces.push({
+            ...generateBackPanel(module, carcassThickness, category, currentHeight, currentDepth, mountingConfig),
+            thickness: mountingConfig.backThickness
         });
     }
 
@@ -723,7 +1105,7 @@ const generateModulePieces = (module: any, thickness: number, rules: EdgeRules, 
 
 // Mock functions for calculation logic
 const calculateLegs = (params: any) => ({ quantity: 4, reason: 'Carga estándar' });
-const calculateDrawerPieces = (params: any) => [];
+const calculateDrawerPieces = (params: any): any[] => [];
 
 // === ENDPOINTS ACTUALIZADOS ===
 
@@ -749,6 +1131,9 @@ app.get('/health', async (req, res) => {
     });
 });
 
+// === MODULE TEMPLATES ROUTES ===
+app.use('/api', moduleTemplatesRouter);
+
 app.post('/api/generate-pieces', async (req, res) => {
     try {
         const { module: mod, config, boardThickness, edgeRules } = req.body;
@@ -766,7 +1151,9 @@ app.post('/api/generate-pieces', async (req, res) => {
         hardwareItems.forEach(item => hardwareMap.set(item.id, item));
         drawerSystems.forEach(item => hardwareMap.set(item.id, item));
 
-        const pieces = generateModulePieces(mod, boardThickness, edgeRules, config, hardwareMap);
+        const carcassThickness = boardThickness || 15;
+        const frontsThickness = 18; // Default for generate-pieces endpoint
+        const pieces = generateModulePieces(mod, carcassThickness, frontsThickness, edgeRules, config, hardwareMap);
         res.json({ success: true, pieces });
     } catch (error: any) {
         res.status(500).json({ success: false, error: error.message });
@@ -813,7 +1200,12 @@ app.post('/api/calculate-project', async (req, res) => {
         drawerSystems.forEach((item: any) => hardwareMap.set(item.id, item)); // Mezclamos en el mismo mapa para simplicidad
 
         // 2. Generar piezas usando el mapa de herrajes
-        project.modules.forEach(mod => {
+        const carcassThickness = project.carcassThickness || project.boardThickness || project.config.carcassThickness || 15;
+        const frontsThickness = project.frontsThickness || project.config.frontsThickness || 18;
+
+        project.modules.forEach((mod, modIdx) => {
+            const modCode = generateModuleCode(mod.category || 'BASE', modIdx + 1);
+
             // Costo de herrajes por módulo
             const modHinge = hardwareMap.get(mod.hingeId || '');
             const modSlider = hardwareMap.get(mod.sliderId || '');
@@ -832,22 +1224,44 @@ app.post('/api/calculate-project', async (req, res) => {
                 }
             }
 
-            const modPieces = generateModulePieces(mod, project.boardThickness, project.edgeRules, project.config, hardwareMap);
+            console.log(`🔨 Calculando Módulo:`, { category: mod.category, width: mod.width, type: mod.type, code: modCode });
+            const modPieces = generateModulePieces(mod, carcassThickness, frontsThickness, project.edgeRules, project.config, hardwareMap);
 
             // Calcular medidas de corte para cada pieza generada
-            const calculated = modPieces.map(p => {
-                const cut = calculateCutDimensions({
-                    name: p.name,
-                    finalWidth: p.finalWidth,
-                    finalHeight: p.finalHeight,
-                    edges: p.edges
-                });
-                return {
-                    ...p,
-                    cutWidth: cut.cutWidth,
-                    cutHeight: cut.cutHeight,
-                    moduleType: mod.type
-                };
+            const calculated = modPieces.map((p, pIdx) => {
+                const pieceCode = generatePieceCode(modCode, p.name, pIdx + 1);
+
+                // Skip calculation for hardware or non-cutting items
+                if (p.category === 'HARDWARE' || (p.finalWidth === 0 && p.finalHeight === 0)) {
+                    return {
+                        ...p,
+                        cutWidth: 0,
+                        cutHeight: 0,
+                        moduleType: mod.type,
+                        moduleCode: modCode,
+                        codigo: pieceCode
+                    };
+                }
+
+                try {
+                    const cut = calculateCutDimensions({
+                        name: p.name,
+                        finalWidth: p.finalWidth,
+                        finalHeight: p.finalHeight,
+                        edges: p.edges
+                    });
+                    return {
+                        ...p,
+                        cutWidth: cut.cutWidth,
+                        cutHeight: cut.cutHeight,
+                        moduleType: mod.type,
+                        moduleCode: modCode,
+                        codigo: pieceCode
+                    };
+                } catch (e: any) {
+                    console.error(`❌ Error en pieza "${p.name}" del módulo ${mod.category}:`, e.message);
+                    throw new Error(`${e.message} (Módulo: ${mod.category}, Ancho: ${mod.width}mm)`);
+                }
             });
 
             allPieces.push(...calculated);
@@ -859,12 +1273,14 @@ app.post('/api/calculate-project', async (req, res) => {
             success: true,
             pieces: allPieces,
             summary: {
-                totalPieces: allPieces.reduce((acc, p) => acc + p.quantity, 0),
-                estimatedBoards: Math.ceil(allPieces.length / 12),
+                totalPieces: allPieces.filter(p => p.category !== 'HARDWARE').reduce((acc, p) => acc + p.quantity, 0),
+                estimatedBoards: Math.ceil(allPieces.filter(p => p.category !== 'HARDWARE').length / 12),
                 hardwareCost: totalHardwareCost,
-                plinthLength: Number(safeConfig.plinthLength) || 0,  // NUCLEAR FIX: Inline access
-                countertopLength: Number(safeConfig.countertopLength) || 0,  // NUCLEAR FIX: Inline access
-                totalEstimatedPrice: totalHardwareCost + 50000
+                plinthLength: Number(safeConfig.plinthLength) || 0,
+                countertopLength: Number(safeConfig.countertopLength) || 0,
+                totalEstimatedPrice: totalHardwareCost + 50000,
+                carcassThickness,
+                frontsThickness
             }
         });
     } catch (error: any) {
@@ -877,6 +1293,144 @@ app.post('/api/calculate-project', async (req, res) => {
     }
 });
 
+
+// --- UPDATE PROJECT ---
+app.put('/api/projects/:id', async (req: any, res) => {
+    const { id } = req.params;
+    console.log(`------- [PUT /api/projects/${id}] UPDATE REQUEST -------`);
+    try {
+        const { projectName, linearLength, modules, clientName, config, thumbnail } = req.body;
+
+        // Auth Logic (same as POST)
+        let finalUserId;
+        const token = req.cookies.token;
+        if (token) {
+            try {
+                const decoded: any = jwt.verify(token, JWT_SECRET);
+                finalUserId = decoded.id;
+            } catch (e) {
+                console.warn('[AUTH] Token inválido');
+            }
+        }
+
+        if (!finalUserId) {
+            const guest = await prisma.user.findFirst({ where: { email: 'guest@kitchenpro.com' } });
+            finalUserId = guest?.id;
+        }
+
+        // 1. Verify ownership/existence
+        const existing = await prisma.project.findUnique({ where: { id } });
+        if (!existing) return res.status(404).json({ success: false, error: 'Proyecto no encontrado' });
+        if (existing.userId !== finalUserId) return res.status(403).json({ success: false, error: 'No tienes permiso para editar este proyecto' });
+
+        // A. Prepare all module data with codes and pieces before the transaction
+        const modulesToSync = await Promise.all(modules.map(async (m: any, idx: number) => {
+            const modCode = generateModuleCode(m.category || 'BASE', idx + 1);
+
+            const hingeId = m.hingeId || null;
+            const sliderId = m.sliderId || null;
+            const drawerSystemId = (m as any).drawerSystemId || null;
+
+            const hardwareIds = [hingeId, sliderId, drawerSystemId].filter(id => !!id);
+            const [hardwareItems, drawerSystems] = await Promise.all([
+                prisma.hardwareItem.findMany({ where: { id: { in: hardwareIds as string[] } } }),
+                prisma.drawerSystem.findMany({ where: { id: { in: hardwareIds as string[] } } })
+            ]);
+
+            const hMap = new Map<string, any>();
+            hardwareItems.forEach(item => hMap.set(item.id, item));
+            drawerSystems.forEach(item => hMap.set(item.id, item));
+
+            const pConfig = config || {};
+            const cThickness = Number(req.body.carcassThickness || pConfig.carcassThickness || 15);
+            const fThickness = Number(req.body.frontsThickness || pConfig.frontsThickness || 18);
+            const eRules = req.body.edgeRules || {};
+
+            const generatedPieces = generateModulePieces(m, cThickness, fThickness, eRules, pConfig, hMap);
+            const finalPieces = (m.customPieces && Array.isArray(m.customPieces) && m.customPieces.length > 0)
+                ? m.customPieces
+                : generatedPieces;
+
+            return {
+                type: String(m.type),
+                category: String(m.category || 'BASE'),
+                width: Number(m.width || 0),
+                isFixed: Boolean(m.isFixed),
+                doorCount: Number(m.doorCount || 0),
+                drawerCount: Number(m.drawerCount || 0),
+                hingeType: String(m.hingeType || 'Estándar'),
+                sliderType: String(m.sliderType || 'Estándar'),
+                hingeId,
+                sliderId,
+                drawerSystemId,
+                templateId: m.templateId ? String(m.templateId) : null,
+                legSystemId: m.legSystemId ? String(m.legSystemId) : null,
+                openingSystem: m.openingSystem ? String(m.openingSystem) : null,
+                customPieces: m.customPieces || null,
+                calculationRules: m.calculationRules || null,
+                height: Number(m.height || 720),
+                depth: Number(m.depth || 560),
+                backMountingType: m.backMountingType || null,
+                grooveDepth: m.grooveDepth !== undefined ? Number(m.grooveDepth) : null,
+                rearGap: m.rearGap !== undefined ? Number(m.rearGap) : null,
+                codigo: modCode,
+                pieces: {
+                    create: finalPieces.map((p: any, pIdx: number) => ({
+                        name: p.name,
+                        finalWidth: Number(p.finalWidth),
+                        finalHeight: Number(p.finalHeight),
+                        quantity: Number(p.quantity || 1),
+                        material: p.material || null,
+                        edgeL1Id: p.edgeL1Id || null,
+                        edgeL2Id: p.edgeL2Id || null,
+                        edgeA1Id: p.edgeA1Id || null,
+                        edgeA2Id: p.edgeA2Id || null,
+                        cutWidth: 0,
+                        cutHeight: 0,
+                        codigo: generatePieceCode(modCode, p.name, pIdx + 1)
+                    }))
+                }
+            };
+        }));
+
+        // 2. Atomic Update (Transaction)
+        const updatedProject = await prisma.$transaction(async (tx) => {
+            // A. Remove existing pieces and modules first (Cascading logic)
+            await tx.piece.deleteMany({ where: { module: { projectId: id } } });
+            await tx.module.deleteMany({ where: { projectId: id } });
+
+            // B. Update Project Base Data
+            return await tx.project.update({
+                where: { id },
+                data: {
+                    name: String(projectName),
+                    clientName: clientName ? String(clientName) : null,
+                    linearLength: Number(linearLength),
+                    thumbnail: thumbnail || null,
+                    config: config || {},
+                    backMountingType: config.backMountingType || 'NAILED',
+                    grooveDepth: Number(config.grooveDepth || 9),
+                    rearGap: Number(config.rearGap || 18),
+                    modules: {
+                        create: modulesToSync
+                    }
+                },
+                include: { modules: { include: { pieces: true } } }
+            });
+        });
+
+        console.log('✅ PROJECT UPDATED SUCCESS:', updatedProject.id);
+        res.json({
+            success: true,
+            id: updatedProject.id,
+            message: 'Proyecto actualizado correctamente'
+        });
+
+    } catch (error: any) {
+        console.error('❌ SERVER ERROR UPDATING PROJECT:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
 
 app.post('/api/projects', async (req: any, res) => {
     console.log('------- [POST /api/projects] NEW REQUEST -------');
@@ -918,7 +1472,76 @@ app.post('/api/projects', async (req: any, res) => {
             finalUserId = guest.id;
         }
 
-        // Prisma Create with normalized fields
+        // A. Prepare all module data with codes and pieces outside Prisma create
+        const modulesToCreate = await Promise.all(modules.map(async (m: any, idx: number) => {
+            const modCode = generateModuleCode(m.category || 'BASE', idx + 1);
+
+            const hingeId = m.hingeId || null;
+            const sliderId = m.sliderId || null;
+            const drawerSystemId = (m as any).drawerSystemId || null;
+
+            const hardwareIds = [hingeId, sliderId, drawerSystemId].filter(id => !!id);
+            const [hardwareItems, drawerSystems] = await Promise.all([
+                prisma.hardwareItem.findMany({ where: { id: { in: hardwareIds as string[] } } }),
+                prisma.drawerSystem.findMany({ where: { id: { in: hardwareIds as string[] } } })
+            ]);
+
+            const hMap = new Map<string, any>();
+            hardwareItems.forEach(item => hMap.set(item.id, item));
+            drawerSystems.forEach(item => hMap.set(item.id, item));
+
+            const pConfig = config || {};
+            const cThickness = Number(req.body.carcassThickness || pConfig.carcassThickness || 15);
+            const fThickness = Number(req.body.frontsThickness || pConfig.frontsThickness || 18);
+            const eRules = req.body.edgeRules || {};
+
+            const generatedPieces = generateModulePieces(m, cThickness, fThickness, eRules, pConfig, hMap);
+            const finalPieces = (m.customPieces && Array.isArray(m.customPieces) && m.customPieces.length > 0)
+                ? m.customPieces
+                : generatedPieces;
+
+            return {
+                type: String(m.type),
+                category: String(m.category || 'BASE'),
+                width: Number(m.width || 0),
+                isFixed: Boolean(m.isFixed),
+                doorCount: Number(m.doorCount || 0),
+                drawerCount: Number(m.drawerCount || 0),
+                hingeType: String(m.hingeType || 'Estándar'),
+                sliderType: String(m.sliderType || 'Estándar'),
+                hingeId,
+                sliderId,
+                drawerSystemId,
+                templateId: m.templateId ? String(m.templateId) : null,
+                legSystemId: m.legSystemId ? String(m.legSystemId) : null,
+                openingSystem: m.openingSystem ? String(m.openingSystem) : null,
+                customPieces: m.customPieces || null,
+                calculationRules: m.calculationRules || null,
+                height: Number(m.height || 720),
+                depth: Number(m.depth || 560),
+                backMountingType: m.backMountingType || null,
+                grooveDepth: m.grooveDepth !== undefined ? Number(m.grooveDepth) : null,
+                rearGap: m.rearGap !== undefined ? Number(m.rearGap) : null,
+                codigo: modCode,
+                pieces: {
+                    create: finalPieces.map((p: any, pIdx: number) => ({
+                        name: p.name,
+                        finalWidth: Number(p.finalWidth),
+                        finalHeight: Number(p.finalHeight),
+                        quantity: Number(p.quantity || 1),
+                        material: p.material || null,
+                        edgeL1Id: p.edgeL1Id || null,
+                        edgeL2Id: p.edgeL2Id || null,
+                        edgeA1Id: p.edgeA1Id || null,
+                        edgeA2Id: p.edgeA2Id || null,
+                        cutWidth: 0,
+                        cutHeight: 0,
+                        codigo: generatePieceCode(modCode, p.name, pIdx + 1)
+                    }))
+                }
+            };
+        }));
+
         const project = await prisma.project.create({
             data: {
                 name: String(projectName),
@@ -928,38 +1551,14 @@ app.post('/api/projects', async (req: any, res) => {
                 openingSystem: String(req.body.openingSystem || 'HANDLE'),
                 thumbnail: thumbnail || null,
                 config: config || {},
+                backMountingType: config.backMountingType || 'NAILED',
+                grooveDepth: Number(config.grooveDepth || 9),
+                rearGap: Number(config.rearGap || 18),
                 modules: {
-                    create: modules.map((m: any, idx: number) => {
-                        // Validate each module has a type
-                        if (!m.type) {
-                            console.error(`❌ Module at index ${idx} is missing "type"`);
-                            throw new Error(`Módulo en posición ${idx} no tiene "type" definido`);
-                        }
-
-                        return {
-                            type: String(m.type),
-                            category: String(m.category || 'BASE'),
-                            width: Number(m.width || 0),
-                            isFixed: Boolean(m.isFixed),
-                            doorCount: Number(m.doorCount || 0),
-                            drawerCount: Number(m.drawerCount || 0),
-                            hingeType: String(m.hingeType || 'Estándar'),
-                            sliderType: String(m.sliderType || 'Estándar'),
-                            hingeId: m.hingeId ? String(m.hingeId) : null,
-                            sliderId: m.sliderId ? String(m.sliderId) : null,
-                            drawerSystemId: m.drawerSystemId ? String(m.drawerSystemId) : null,
-                            templateId: m.templateId ? String(m.templateId) : null,
-                            legSystemId: m.legSystemId ? String(m.legSystemId) : null,
-                            openingSystem: m.openingSystem ? String(m.openingSystem) : null,
-                            customPieces: m.customPieces || null,
-                            calculationRules: m.calculationRules || null,
-                            height: Number(m.height || 720),
-                            depth: Number(m.depth || 560)
-                        };
-                    })
+                    create: modulesToCreate
                 }
             },
-            include: { modules: true }
+            include: { modules: { include: { pieces: true } } }
         });
 
         console.log('✅ PROJECT SAVED SUCCESS:', project.id);
@@ -1016,13 +1615,35 @@ app.get('/api/projects/:id', protect, async (req: any, res) => {
 
 app.delete('/api/projects/:id', protect, async (req: any, res) => {
     try {
-        // Primero borrar módulos asociados para evitar error de FK
-        await prisma.module.deleteMany({ where: { projectId: req.params.id } });
-        await prisma.project.delete({
-            where: { id: req.params.id, userId: req.user.id }
+        const projectId = req.params.id;
+
+        // 1. Find all modules for this project
+        const modules = await prisma.module.findMany({
+            where: { projectId: projectId }
         });
-        res.json({ success: true, message: 'Proyecto eliminado' });
+
+        const moduleIds = modules.map(m => m.id);
+
+        // 2. Delete all pieces associated with these modules
+        if (moduleIds.length > 0) {
+            await prisma.piece.deleteMany({
+                where: { moduleId: { in: moduleIds } }
+            });
+        }
+
+        // 3. Delete modules
+        await prisma.module.deleteMany({
+            where: { projectId: projectId }
+        });
+
+        // 4. Delete the project itself
+        await prisma.project.delete({
+            where: { id: projectId, userId: req.user.id }
+        });
+
+        res.json({ success: true, message: 'Proyecto y dependencias eliminados correctamente' });
     } catch (error: any) {
+        console.error('❌ Error deleting project:', error);
         res.status(500).json({ success: false, error: error.message });
     }
 });

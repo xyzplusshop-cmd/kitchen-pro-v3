@@ -11,6 +11,9 @@ import { BaseModuleCatalog } from './components/Catalogs/BaseModuleCatalog';
 import { TowerModuleCatalog } from './components/Catalogs/TowerModuleCatalog';
 import { IslandModuleCatalog } from './components/Catalogs/IslandModuleCatalog';
 import { LegSystemCatalog } from './components/Catalogs/LegSystemCatalog';
+import { MaterialsHub } from './components/Catalogs/MaterialsHub';
+import { EdgeBandCatalog } from './components/Catalogs/EdgeBandCatalog';
+import { ConsumiblesCatalog } from './components/Catalogs/ConsumiblesCatalog';
 
 import { AuthProvider, useAuth } from './context/AuthContext';
 
@@ -58,6 +61,18 @@ function AppRoutes() {
       <Route
         path="/catalogs/materials"
         element={user ? <MaterialCatalog /> : <Navigate to="/login" />}
+      />
+      <Route
+        path="/catalogs/materials-hub"
+        element={user ? <MaterialsHub /> : <Navigate to="/login" />}
+      />
+      <Route
+        path="/catalogs/edge-banding"
+        element={user ? <EdgeBandCatalog /> : <Navigate to="/login" />}
+      />
+      <Route
+        path="/catalogs/consumables"
+        element={user ? <ConsumiblesCatalog /> : <Navigate to="/login" />}
       />
       <Route
         path="/catalogs/modules/wall"

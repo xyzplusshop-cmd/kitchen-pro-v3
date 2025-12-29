@@ -7,6 +7,8 @@ interface Material {
     id: string;
     name: string;
     thickness: number;
+    width: number;
+    height: number;
     cost: number;
 }
 
@@ -44,6 +46,8 @@ export const MaterialCatalog = () => {
         const data: any = {
             name: formData.get('name'),
             thickness: parseFloat(formData.get('thickness') as string),
+            width: parseFloat(formData.get('width') as string),
+            height: parseFloat(formData.get('height') as string),
             cost: parseFloat(formData.get('cost') as string)
         };
 
@@ -115,7 +119,8 @@ export const MaterialCatalog = () => {
                             <thead className="bg-slate-50 border-b border-slate-100">
                                 <tr>
                                     <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase">Nombre</th>
-                                    <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase">Espesor (mm)</th>
+                                    <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase">Espesor</th>
+                                    <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase">Dimensiones (WxH)</th>
                                     <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase">Costo</th>
                                     <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase text-right">Acciones</th>
                                 </tr>
@@ -125,6 +130,7 @@ export const MaterialCatalog = () => {
                                     <tr key={item.id} className="hover:bg-orange-50/30 transition group">
                                         <td className="px-6 py-4 font-bold text-slate-800">{item.name}</td>
                                         <td className="px-6 py-4 text-sm text-slate-600">{item.thickness}mm</td>
+                                        <td className="px-6 py-4 text-sm text-slate-500 font-mono">{item.width} x {item.height} mm</td>
                                         <td className="px-6 py-4 text-sm font-bold text-orange-700">${item.cost}</td>
                                         <td className="px-6 py-4 text-right">
                                             <div className="flex gap-2 justify-end opacity-0 group-hover:opacity-100 transition-opacity">
@@ -163,8 +169,18 @@ export const MaterialCatalog = () => {
                                 <label className="block text-sm font-bold text-slate-700 mb-1">Espesor (mm)</label>
                                 <input name="thickness" type="number" step="0.1" defaultValue={editingItem?.thickness} required className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-orange-500" />
                             </div>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-sm font-bold text-slate-700 mb-1">Ancho (mm)</label>
+                                    <input name="width" type="number" step="1" defaultValue={editingItem?.width || 2440} required className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-orange-500" />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-bold text-slate-700 mb-1">Alto (mm)</label>
+                                    <input name="height" type="number" step="1" defaultValue={editingItem?.height || 1830} required className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-orange-500" />
+                                </div>
+                            </div>
                             <div>
-                                <label className="block text-sm font-bold text-slate-700 mb-1">Costo</label>
+                                <label className="block text-sm font-bold text-slate-700 mb-1">Costo ($)</label>
                                 <input name="cost" type="number" step="0.01" defaultValue={editingItem?.cost} required className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-orange-500" />
                             </div>
                             <button type="submit" className="w-full bg-orange-600 text-white py-3 rounded-xl font-bold hover:bg-orange-700 transition flex items-center justify-center gap-2">

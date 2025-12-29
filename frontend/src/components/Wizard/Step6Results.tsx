@@ -1,7 +1,12 @@
 import { useEffect, useState } from 'react';
 import { useProjectStore } from '../../store/useProjectStore';
-import { ArrowLeft, Download, FileText, Layout, Printer, CheckCircle2, Loader2, AlertCircle } from 'lucide-react';
+import { ArrowLeft, Download, FileText, Layout, Printer, CheckCircle2, Loader2, AlertCircle, DollarSign } from 'lucide-react';
 import axios from 'axios';
+import { ProductionPDFExport } from '../Reports/ProductionPDF';
+import { CostDashboard } from '../Results/CostDashboard';
+import { exportCutlistToCSV } from '../../utils/exportFormats';
+import { calculatePieceMachining } from '../../utils/machiningEngine';
+import { exportPieceToDXF } from '../../utils/dxfGenerator';
 
 export const Step6Results = () => {
     const {
@@ -10,7 +15,8 @@ export const Step6Results = () => {
         modules, prevStep, goToStep, resetProject,
         baseHeight, plinthHeight, wallHeight,
         baseDepth, wallDepth,
-        doorInstallationType, doorGap, drawerInstallationType
+        doorInstallationType, doorGap, drawerInstallationType,
+        plinthLength, countertopLength
     } = useProjectStore();
 
 
@@ -18,8 +24,22 @@ export const Step6Results = () => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [results, setResults] = useState<any>(null);
+    const [allMaterials, setAllMaterials] = useState<any[]>([]);
+    const [activeTab, setActiveTab] = useState<'despiece' | 'costos'>('despiece');
 
     useEffect(() => {
+        const fetchMaterials = async () => {
+            try {
+                const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:4000';
+                const matRes = await axios.get(`${apiBaseUrl}/api/materials`);
+                if (matRes.data.success) {
+                    setAllMaterials(matRes.data.items);
+                }
+            } catch (err) {
+                console.error('Error fetching materials:', err);
+            }
+        };
+
         const calculateProject = async () => {
             try {
                 const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:4000';
@@ -50,6 +70,7 @@ export const Step6Results = () => {
             }
         };
 
+        fetchMaterials();
         calculateProject();
     }, [projectName, linearLength, boardThickness, edgeRuleDoors, edgeRuleVisible, edgeRuleInternal, modules]);
 
@@ -188,127 +209,162 @@ export const Step6Results = () => {
                 </div>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                {/* Lista de Corte (Tabla Técnica) */}
-                <div className="lg:col-span-2 bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden print:border-none print:shadow-none">
-                    <div className="p-6 border-b flex justify-between items-center bg-slate-50 print:bg-white">
-                        <h3 className="font-black text-slate-800 flex items-center gap-2">
-                            <FileText size={20} className="text-blue-600 print:hidden" />
-                            LISTA DE CORTE (TALLER)
-                        </h3>
-                        <span className="bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-xs font-black print:border print:border-slate-300">
-                            {results?.summary.totalPieces} PIEZAS
-                        </span>
-                    </div>
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-sm text-left">
-                            <thead className="text-xs uppercase bg-slate-100 text-slate-500 border-b print:bg-slate-200">
-                                <tr>
-                                    <th className="px-6 py-4">Pieza</th>
-                                    <th className="px-6 py-4">Cant</th>
-                                    <th className="px-6 py-4">Final (mm)</th>
-                                    <th className="px-6 py-4 font-black text-blue-600 print:text-slate-900">Corte (mm)</th>
-                                    <th className="px-6 py-4 print:hidden">Módulo</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-slate-100">
-                                {['TOWER', 'BASE', 'WALL'].map(cat => {
-                                    const catPieces = results?.pieces.filter((p: any) => p.category === cat);
-                                    if (!catPieces || catPieces.length === 0) return null;
-
-                                    return (
-                                        <div key={cat} className="contents">
-                                            <tr className="bg-slate-50 print:bg-slate-100">
-                                                <td colSpan={5} className="px-6 py-2 font-black text-[10px] text-blue-600 uppercase tracking-widest leading-none">
-                                                    Zona: {cat === 'TOWER' ? 'Torres y Columnas' : cat === 'BASE' ? 'Muebles Bajos' : 'Muebles Aéreos'}
-                                                </td>
-                                            </tr>
-                                            {catPieces.map((p: any, idx: number) => (
-                                                <tr key={`${cat}-${idx}`} className="hover:bg-blue-50/50 transition duration-150 print:hover:bg-transparent">
-                                                    <td className="px-6 py-4 font-bold text-slate-700">{p.name}</td>
-                                                    <td className="px-6 py-4 font-black">{p.quantity}</td>
-                                                    <td className="px-6 py-4 text-slate-400">{p.finalWidth} x {p.finalHeight}</td>
-                                                    <td className="px-6 py-4 font-black text-blue-600 bg-blue-50 print:bg-transparent print:text-black print:text-lg">{p.cutWidth} x {p.cutHeight}</td>
-                                                    <td className="px-6 py-4 print:hidden text-[10px] text-slate-400 font-bold uppercase">{cat}</td>
-                                                </tr>
-                                            ))}
-                                        </div>
-                                    );
-                                })}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-
-                {/* Resumen de Materiales y Visualización 2D */}
-                <div className="space-y-8 print:break-before-page">
-                    {/* Visualización 2D Plano Cenital */}
-                    <div className="bg-slate-900 p-6 rounded-3xl shadow-2xl relative group print:bg-white print:border-2 print:border-slate-200 print:shadow-none print:text-slate-900">
-                        <div className="flex justify-between items-center mb-6">
-                            <h3 className="text-white font-black text-sm flex items-center gap-2 print:text-slate-900">
-                                <Layout size={18} className="text-blue-400 print:hidden" />
-                                PLANO TÉCNICO 2D
-                            </h3>
-                        </div>
-                        <div className="aspect-video bg-slate-800 rounded-xl border border-slate-700 flex items-center justify-center overflow-hidden print:bg-white print:border-slate-300">
-                            <div className="relative w-[80%] h-12 bg-blue-900/30 border-2 border-blue-500/50 rounded flex gap-1 p-0.5 print:bg-slate-100 print:border-slate-800">
-                                {modules.map((m, i) => (
-                                    <div key={i} className="bg-blue-500/20 border border-blue-400/50 h-full rounded print:border-slate-800" style={{ width: `${(m.width / linearLength) * 100}%` }}></div>
-                                ))}
-                                <div className="absolute -bottom-6 left-0 text-[10px] text-slate-500 font-bold">0mm</div>
-                                <div className="absolute -bottom-6 right-0 text-[10px] text-slate-500 font-bold">{linearLength}mm</div>
-                            </div>
-                        </div>
-                        <p className="text-[10px] text-slate-500 mt-6 text-center italic">Vista: Planta Cenital (Módulos Bajos)</p>
-                    </div>
-
-                    {/* Presupuesto y Botón Guardar */}
-                    <div className="bg-white p-8 rounded-3xl shadow-sm border border-slate-200 print:hidden">
-                        <h3 className="font-black text-slate-800 mb-6 border-b pb-4 tracking-tighter uppercase">Resumen de Materiales</h3>
-                        <div className="space-y-4">
-                            <div className="flex justify-between text-sm">
-                                <span className="text-slate-500 font-bold uppercase tracking-widest text-[10px]">Materiales Base</span>
-                            </div>
-                            <div className="flex justify-between text-sm pl-2">
-                                <span className="text-slate-500 italic">Planchas ({boardThickness}mm)</span>
-                                <span className="font-bold">{results?.summary.estimatedBoards} un</span>
-                            </div>
-                            <div className="flex justify-between text-sm pl-2">
-                                <span className="text-slate-500 italic font-medium">Costo Tableros (Est.)</span>
-                                <span className="font-black text-slate-700">$ {((results?.summary.totalEstimatedPrice || 0) - (results?.summary.hardwareCost || 0)).toLocaleString()}</span>
-                            </div>
-
-                            <div className="pt-2">
-                                <span className="text-slate-500 font-bold uppercase tracking-widest text-[10px]">Herrajes Seleccionados</span>
-                            </div>
-                            <div className="flex justify-between text-sm pl-2">
-                                <span className="text-slate-500 italic font-medium">Costo Herrajes (Real)</span>
-                                <span className="font-black text-blue-600">$ {(results?.summary.hardwareCost || 0).toLocaleString()}</span>
-                            </div>
-
-                            <div className="pt-4 mt-4 border-t-2 border-slate-900 flex justify-between items-center bg-slate-50 p-4 rounded-xl">
-                                <span className="font-black text-slate-900 tracking-tighter uppercase">Precio Total</span>
-                                <span className="font-black text-2xl text-blue-600 tracking-tighter">$ {(results?.summary.totalEstimatedPrice || 0).toLocaleString()}</span>
-                            </div>
-                        </div>
-
-                        <button
-                            onClick={handleSaveProject}
-                            disabled={saving}
-                            className={`w-full mt-8 py-4 rounded-xl font-black transition shadow-xl uppercase tracking-widest text-sm flex items-center justify-center gap-2 ${saving
-                                ? 'bg-slate-400 cursor-not-allowed shadow-none'
-                                : 'bg-blue-600 text-white hover:bg-blue-700 shadow-blue-200'
-                                }`}
-                        >
-                            {saving ? (
-                                <><Loader2 className="animate-spin" size={20} /> GUARDANDO...</>
-                            ) : (
-                                'GUARDAR EN CLOUD ☁️'
-                            )}
-                        </button>
-                    </div>
-                </div>
+            {/* Selector de Pestañas */}
+            <div className="flex gap-2 p-1 bg-slate-100 rounded-2xl w-fit print:hidden">
+                <button
+                    onClick={() => setActiveTab('despiece')}
+                    className={`px-6 py-2 rounded-xl font-bold transition flex items-center gap-2 ${activeTab === 'despiece' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:bg-white/50'}`}
+                >
+                    <FileText size={18} /> Despiece Técnico
+                </button>
+                <button
+                    onClick={() => setActiveTab('costos')}
+                    className={`px-6 py-2 rounded-xl font-bold transition flex items-center gap-2 ${activeTab === 'costos' ? 'bg-white text-green-600 shadow-sm' : 'text-slate-500 hover:bg-white/50'}`}
+                >
+                    <DollarSign size={18} /> Presupuesto y Costos
+                </button>
             </div>
+
+            {activeTab === 'despiece' ? (
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                    {/* Lista de Corte (Tabla Técnica) */}
+                    <div className="lg:col-span-2 bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden print:border-none print:shadow-none">
+                        <div className="p-6 border-b flex justify-between items-center bg-slate-50 print:bg-white">
+                            <h3 className="font-black text-slate-800 flex items-center gap-2">
+                                <FileText size={20} className="text-blue-600 print:hidden" />
+                                LISTA DE CORTE (TALLER)
+                            </h3>
+                            <div className="flex items-center gap-3">
+                                <button
+                                    onClick={() => {
+                                        if (results?.pieces && allMaterials.length > 0) {
+                                            exportCutlistToCSV(results.pieces, allMaterials, projectName);
+                                        } else {
+                                            alert('⚠️ No hay piezas para exportar o faltan datos de materiales.');
+                                        }
+                                    }}
+                                    className="print:hidden flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-xl font-bold hover:bg-green-700 transition shadow-md"
+                                >
+                                    <Download size={16} /> Exportar CSV
+                                </button>
+                                <span className="bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-xs font-black print:border print:border-slate-300">
+                                    {results?.summary.totalPieces} PIEZAS
+                                </span>
+                            </div>
+                        </div>
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-sm text-left">
+                                <thead className="text-xs uppercase bg-slate-100 text-slate-500 border-b print:bg-slate-200">
+                                    <tr>
+                                        <th className="px-6 py-4">Pieza</th>
+                                        <th className="px-6 py-4">Cant</th>
+                                        <th className="px-6 py-4">Final (mm)</th>
+                                        <th className="px-6 py-4 font-black text-blue-600 print:text-slate-900">Corte (mm)</th>
+                                        <th className="px-6 py-4 print:hidden">Módulo</th>
+                                        <th className="px-6 py-4 print:hidden text-center">CNC</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-100">
+                                    {['TOWER', 'BASE', 'WALL'].map(cat => {
+                                        const catPieces = results?.pieces.filter((p: any) => p.category === cat);
+                                        if (!catPieces || catPieces.length === 0) return null;
+
+                                        return (
+                                            <div key={cat} className="contents">
+                                                <tr className="bg-slate-50 print:bg-slate-100">
+                                                    <td colSpan={6} className="px-6 py-2 font-black text-[10px] text-blue-600 uppercase tracking-widest leading-none">
+                                                        Zona: {cat === 'TOWER' ? 'Torres y Columnas' : cat === 'BASE' ? 'Muebles Bajos' : 'Muebles Aéreos'}
+                                                    </td>
+                                                </tr>
+                                                {catPieces.map((p: any, idx: number) => (
+                                                    <tr key={`${cat}-${idx}`} className="hover:bg-blue-50/50 transition duration-150 print:hover:bg-transparent">
+                                                        <td className="px-6 py-4 font-bold text-slate-700">{p.name}</td>
+                                                        <td className="px-6 py-4 font-black">{p.quantity}</td>
+                                                        <td className="px-6 py-4 text-slate-400">{p.finalWidth} x {p.finalHeight}</td>
+                                                        <td className="px-6 py-4 font-black text-blue-600 bg-blue-50 print:bg-transparent print:text-black print:text-lg">{p.cutWidth} x {p.cutHeight}</td>
+                                                        <td className="px-6 py-4 print:hidden text-[10px] text-slate-400 font-bold uppercase">{cat}</td>
+                                                    </tr>
+                                                ))}
+                                            </div>
+                                        );
+                                    })}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    {/* Resumen de Materiales y Visualización 2D */}
+                    <div className="space-y-8 print:break-before-page">
+                        {/* Visualización 2D Plano Cenital */}
+                        <div className="bg-slate-900 p-6 rounded-3xl shadow-2xl relative group print:bg-white print:border-2 print:border-slate-200 print:shadow-none print:text-slate-900">
+                            <div className="flex justify-between items-center mb-6">
+                                <h3 className="text-white font-black text-sm flex items-center gap-2 print:text-slate-900">
+                                    <Layout size={18} className="text-blue-400 print:hidden" />
+                                    PLANO TÉCNICO 2D
+                                </h3>
+                            </div>
+                            <div className="aspect-video bg-slate-800 rounded-xl border border-slate-700 flex items-center justify-center overflow-hidden print:bg-white print:border-slate-300">
+                                <div className="relative w-[80%] h-12 bg-blue-900/30 border-2 border-blue-500/50 rounded flex gap-1 p-0.5 print:bg-slate-100 print:border-slate-800">
+                                    {modules.map((m, i) => (
+                                        <div key={i} className="bg-blue-500/20 border border-blue-400/50 h-full rounded print:border-slate-800" style={{ width: `${(m.width / linearLength) * 100}%` }}></div>
+                                    ))}
+                                    <div className="absolute -bottom-6 left-0 text-[10px] text-slate-500 font-bold">0mm</div>
+                                    <div className="absolute -bottom-6 right-0 text-[10px] text-slate-500 font-bold">{linearLength}mm</div>
+                                </div>
+                            </div>
+                            <p className="text-[10px] text-slate-500 mt-6 text-center italic">Vista: Planta Cenital (Módulos Bajos)</p>
+                        </div>
+
+                        {/* Presupuesto y Botón Guardar */}
+                        <div className="bg-white p-8 rounded-3xl shadow-sm border border-slate-200 print:hidden">
+                            <h3 className="font-black text-slate-800 mb-6 border-b pb-4 tracking-tighter uppercase">Resumen de Materiales</h3>
+                            <div className="space-y-4">
+                                <div className="flex justify-between text-sm">
+                                    <span className="text-slate-500 font-bold uppercase tracking-widest text-[10px]">Materiales Base</span>
+                                </div>
+                                <div className="flex justify-between text-sm pl-2">
+                                    <span className="text-slate-500 italic">Planchas ({boardThickness}mm)</span>
+                                    <span className="font-bold">{results?.summary.estimatedBoards} un</span>
+                                </div>
+                                <div className="flex justify-between text-sm pl-2">
+                                    <span className="text-slate-500 italic font-medium">Costo Tableros (Est.)</span>
+                                    <span className="font-black text-slate-700">$ {((results?.summary.totalEstimatedPrice || 0) - (results?.summary.hardwareCost || 0)).toLocaleString()}</span>
+                                </div>
+
+                                <div className="pt-2">
+                                    <span className="text-slate-500 font-bold uppercase tracking-widest text-[10px]">Herrajes Seleccionados</span>
+                                </div>
+                                <div className="flex justify-between text-sm pl-2">
+                                    <span className="text-slate-500 italic font-medium">Costo Herrajes (Real)</span>
+                                    <span className="font-black text-blue-600">$ {(results?.summary.hardwareCost || 0).toLocaleString()}</span>
+                                </div>
+
+                                <div className="pt-4 mt-4 border-t-2 border-slate-900 flex justify-between items-center bg-slate-50 p-4 rounded-xl">
+                                    <span className="font-black text-slate-900 tracking-tighter uppercase">Precio Total</span>
+                                    <span className="font-black text-2xl text-blue-600 tracking-tighter">$ {(results?.summary.totalEstimatedPrice || 0).toLocaleString()}</span>
+                                </div>
+                            </div>
+
+                            <button
+                                onClick={handleSaveProject}
+                                disabled={saving}
+                                className={`w-full mt-8 py-4 rounded-xl font-black transition shadow-xl uppercase tracking-widest text-sm flex items-center justify-center gap-2 ${saving
+                                    ? 'bg-slate-400 cursor-not-allowed shadow-none'
+                                    : 'bg-blue-600 text-white hover:bg-blue-700 shadow-blue-200'
+                                    }`}
+                            >
+                                {saving ? (
+                                    <><Loader2 className="animate-spin" size={20} /> GUARDANDO...</>
+                                ) : (
+                                    'GUARDAR EN CLOUD ☁️'
+                                )}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            ) : (
+                <CostDashboard modules={modules} results={results} />
+            )}
 
             <div className="flex justify-between items-center pt-8 border-t border-slate-100 print:hidden">
                 <button onClick={prevStep} className="text-slate-400 font-bold hover:text-slate-600 transition flex items-center gap-2">

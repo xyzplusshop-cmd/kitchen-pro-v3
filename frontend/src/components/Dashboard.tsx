@@ -1,4 +1,14 @@
-import { Package, Plus, ClipboardList, LogOut, Trash2, Edit3, FileText, User } from 'lucide-react';
+import {
+    Package,
+    Plus,
+    FileText,
+    Trash2,
+    Edit3,
+    ClipboardList,
+    LogOut,
+    Database,
+    User
+} from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import axios from 'axios';
@@ -19,7 +29,7 @@ export const Dashboard = () => {
     const fetchProjects = async () => {
         try {
             const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:4000';
-            const res = await axios.get(`${apiBaseUrl}/api/projects`, { withCredentials: true });
+            const res = await axios.get(`${apiBaseUrl} /api/projects`, { withCredentials: true });
             if (res.data.success) {
                 setProjects(res.data.projects);
             }
@@ -34,7 +44,7 @@ export const Dashboard = () => {
         if (window.confirm('¿Estás seguro de eliminar este proyecto?')) {
             try {
                 const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:4000';
-                await axios.delete(`${apiBaseUrl}/api/projects/${id}`, { withCredentials: true });
+                await axios.delete(`${apiBaseUrl} /api/projects / ${id} `, { withCredentials: true });
                 setProjects(prev => prev.filter(p => p.id !== id));
             } catch (error) {
                 alert('No se pudo eliminar el proyecto');
@@ -93,29 +103,28 @@ export const Dashboard = () => {
                         <p className="text-4xl font-black text-slate-900 mt-1">{projects.length}</p>
                     </div>
 
-                    {/* Catalog Management Buttons */}
-                    <div className="bg-gradient-to-br from-green-50 to-emerald-50 p-6 rounded-2xl shadow-sm border border-green-200 cursor-pointer hover:shadow-xl transition-all" onClick={() => navigate('/catalogs/hardware')}>
-                        <div className="bg-green-600 p-3 rounded-xl w-fit text-white mb-4">
-                            <Package size={24} />
+                    {/* Unified Materials & Inventory Hub */}
+                    <div className="md:col-span-3 bg-gradient-to-br from-blue-600 to-indigo-700 p-8 rounded-3xl shadow-2xl shadow-blue-200 cursor-pointer hover:shadow-blue-300 transition-all border border-blue-400 group relative overflow-hidden" onClick={() => navigate('/catalogs/materials-hub')}>
+                        <div className="relative z-10 flex flex-col h-full justify-between">
+                            <div>
+                                <div className="bg-white/20 backdrop-blur-md p-3 rounded-2xl w-fit text-white mb-4 border border-white/30 group-hover:scale-110 transition-transform">
+                                    <Database size={28} />
+                                </div>
+                                <h2 className="text-xl font-black text-white uppercase tracking-tighter italic">Materiales e Inventario</h2>
+                                <p className="text-sm font-bold text-blue-100 mt-2 max-w-md">
+                                    Gestiona melaminas, herrajes, consumibles y sistemas técnicos desde un solo lugar.
+                                    La base de datos centralizada para el asistente.
+                                </p>
+                            </div>
+                            <div className="mt-8 flex items-center gap-2 text-white font-black text-xs uppercase tracking-widest">
+                                <span>Abrir Portal Técnico</span>
+                                <div className="h-1 w-8 bg-white/30 rounded-full group-hover:w-16 transition-all"></div>
+                            </div>
                         </div>
-                        <h2 className="text-xs font-black text-slate-700 uppercase tracking-widest">Herrajes</h2>
-                        <p className="text-sm font-bold text-green-700 mt-2">Gestionar Catálogo →</p>
-                    </div>
-
-                    <div className="bg-gradient-to-br from-purple-50 to-violet-50 p-6 rounded-2xl shadow-sm border border-purple-200 cursor-pointer hover:shadow-xl transition-all" onClick={() => navigate('/catalogs/drawer-systems')}>
-                        <div className="bg-purple-600 p-3 rounded-xl w-fit text-white mb-4">
-                            <Package size={24} />
+                        {/* Decorative background element */}
+                        <div className="absolute -bottom-10 -right-10 opacity-10 group-hover:rotate-12 transition-transform">
+                            <Package size={200} className="text-white" />
                         </div>
-                        <h2 className="text-xs font-black text-slate-700 uppercase tracking-widest">Sistemas de Cajones</h2>
-                        <p className="text-sm font-bold text-purple-700 mt-2">Gestionar Catálogo →</p>
-                    </div>
-
-                    <div className="bg-gradient-to-br from-orange-50 to-amber-50 p-6 rounded-2xl shadow-sm border border-orange-200 cursor-pointer hover:shadow-xl transition-all" onClick={() => navigate('/catalogs/materials')}>
-                        <div className="bg-orange-600 p-3 rounded-xl w-fit text-white mb-4">
-                            <Package size={24} />
-                        </div>
-                        <h2 className="text-xs font-black text-slate-700 uppercase tracking-widest">Materiales</h2>
-                        <p className="text-sm font-bold text-orange-700 mt-2">Gestionar Catálogo →</p>
                     </div>
                 </div>
 
@@ -157,19 +166,6 @@ export const Dashboard = () => {
                     </div>
                 </div>
 
-                {/* Additional Catalogs */}
-                <div className="mb-12">
-                    <h3 className="text-sm font-black text-slate-400 uppercase tracking-widest mb-4">Hardware Adicional</h3>
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-                        <div className="bg-gradient-to-br from-indigo-50 to-purple-50 p-6 rounded-2xl shadow-sm border border-indigo-200 cursor-pointer hover:shadow-xl transition-all" onClick={() => navigate('/catalogs/leg-systems')}>
-                            <div className="bg-indigo-600 p-3 rounded-xl w-fit text-white mb-4">
-                                <Package size={24} />
-                            </div>
-                            <h2 className="text-xs font-black text-slate-700 uppercase tracking-widest">Sistemas de Patas</h2>
-                            <p className="text-sm font-bold text-indigo-700 mt-2">Gestionar Catálogo →</p>
-                        </div>
-                    </div>
-                </div>
 
                 <div className="bg-white rounded-3xl shadow-xl shadow-slate-200/50 border border-slate-200 overflow-hidden">
                     <div className="px-8 py-6 border-b border-slate-100 flex justify-between items-center">

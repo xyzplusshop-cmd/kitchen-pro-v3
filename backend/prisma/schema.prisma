@@ -19,6 +19,12 @@ model User {
   updatedAt DateTime  @updatedAt
 }
 
+enum MaterialType {
+  BOARD
+  EDGE
+  HARDWARE
+}
+
 model Project {
   id             String   @id @default(uuid())
   name           String
@@ -30,6 +36,17 @@ model Project {
   defaultEdgeId  String?
   thumbnail      String?  // URL o Base64 de la previsualización
   config         Json?    // Alturas, profundidades, tipo de puerta
+  codigo         String?  @unique // C-2025-001
+  
+  // Thickness Management (Source of Truth)
+  carcassThickness Int    @default(18)  // 15mm o 18mm - Estructura
+  frontsThickness  Int    @default(18)  // 15mm, 18mm, 22mm - Puertas/Cajones
+  
+  // Back Panel Mounting Logic
+  backMountingType String   @default("NAILED") // NAILED, GROOVED
+  grooveDepth      Float    @default(9)
+  rearGap          Float    @default(18)
+
   modules        Module[]
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
@@ -42,7 +59,11 @@ model HardwareItem {
   compatibility   String[] // FULL_OVERLAY, HALF_OVERLAY, INSET, STANDARD, etc.
   discountRules   Json     // side_clearance, depth_clearance, etc.
   price           Float    @default(0)
+  unitCost        Float    @default(0) // Purchase cost
+  provider        String?
   brand           String?
+  codigo          String?  @unique // HRD-001
+  openingDegree   Int?     // Grados de apertura (ej: 110, 155, 170)
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 }
@@ -56,6 +77,9 @@ model DrawerSystem {
   bottomConstruction  String   @default("RANURADO") // RANURADO, CLAVADO
   backendClearance    Float    @default(10)
   price               Float    @default(0)
+  unitCost            Float    @default(0) // Purchase cost
+  provider            String?
+  codigo              String?  @unique // DRW-001
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt
 }
@@ -64,9 +88,33 @@ model ModuleTemplate {
   id              String   @id @default(cuid())
   modelo          String   // Código del modelo (ej: MA-01, MB-02, DT-01)
   nombre          String   // Nombre descriptivo
-  zona            String   // WALL, BASE, TOWER, ISLAND
+  zona            String   // WALL, BASE, TOWER, ISLAND  
   tipoApertura    String?  // PUSH, GOLA, JALADORES (se define aquí)
+  
+  // External Dimensions (User Input in Catalog Wizard)
+  externalWidth   Float?   // Ancho total externo
+  externalHeight  Float?   // Alto total externo
+  externalDepth   Float?   // Profundidad total externa
+  
+  // Reference Thickness (Solo para cálculos en catálogo)
+  referenceThickness Int   @default(18)  // 15mm o 18mm
+  
   piezas          Json     // Estructura JSON con todas las piezas y dimensiones
+  
+  // Piece Templates with Formulas (for auto-calculation)
+  pieceTemplates  Json?    // Templates con fórmulas para calcular dimensiones
+  
+  // Stretcher Configuration Defaults
+  hasTopStretcher    Boolean? @default(false)
+  hasBottomStretcher Boolean? @default(false)
+  hasFrontStretcher  Boolean? @default(false)
+  hasBackPanel       Boolean? @default(true)
+  
+  // Back Panel Mounting Logic
+  backMountingType String   @default("NAILED") // NAILED, GROOVED
+  grooveDepth      Float    @default(9)
+  rearGap          Float    @default(18)
+
   thumbnail       String?
   descripcion     String?
   isActive        Boolean  @default(true)
@@ -80,7 +128,34 @@ model LegSystem {
   name      String
   height    Float
   price     Float
+  unitCost  Float    @default(0) // Purchase cost
+  provider  String?
   brand     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Tool {
+  id        String   @id @default(cuid())
+  name      String
+  codigo    String   @unique // TOL-001
+  brand     String?
+  price     Float    @default(0)
+  unitCost  Float    @default(0) // Purchase cost
+  provider  String?
+  stock     Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Accessory {
+  id        String   @id @default(cuid())
+  name      String
+  codigo    String   @unique // ACC-001
+  price     Float    @default(0)
+  unitCost  Float    @default(0) // Purchase cost
+  provider  String?
+  stock     Int      @default(0)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
@@ -103,10 +178,23 @@ model Module {
   height        Float    @default(720)
   depth         Float    @default(560)
   openingSystem String?
+  codigo        String?  // MOD-BASE-001 (Unique per project)
   templateId    String?  // Reference to ModuleTemplate
   legSystemId   String?  // Reference to LegSystem
   customPieces  Json?    // Custom piece edits (Stage 3)
   calculationRules Json? // Applied calculation rules
+  
+  // Stretchers System (Economic Furniture)
+  hasTopStretcher    Boolean? @default(false)
+  hasBottomStretcher Boolean? @default(false)
+  hasFrontStretcher  Boolean? @default(false)
+  hasBackPanel       Boolean? @default(true)
+  
+  // Back Panel Mounting Logic (Overrides)
+  backMountingType String?  // NAILED, GROOVED, INSET
+  grooveDepth      Float?
+  rearGap          Float?
+
   pieces        Piece[]
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
@@ -121,34 +209,72 @@ model Piece {
   finalHeight Float
   cutWidth    Float
   cutHeight   Float
+  codigo      String?  // PZA-LAT-001
   materialId  String?
-  material    Material? @relation(fields: [materialId], references: [id])
+  material    Material? @relation("PieceMaterial", fields: [materialId], references: [id])
   
-  // Cantos por lado (IDs de EdgeBand)
-  edgeTopId    String?
-  edgeBottomId String?
-  edgeLeftId   String?
-  edgeRightId  String?
+  // Cantos por lado (relacionados con Material de tipo EDGE)
+  edgeL1Id    String?
+  edgeL1      Material? @relation("PieceEdgeL1", fields: [edgeL1Id], references: [id])
+  edgeL2Id    String?
+  edgeL2      Material? @relation("PieceEdgeL2", fields: [edgeL2Id], references: [id])
+  edgeA1Id    String?
+  edgeA1      Material? @relation("PieceEdgeA1", fields: [edgeA1Id], references: [id])
+  edgeA2Id    String?
+  edgeA2      Material? @relation("PieceEdgeA2", fields: [edgeA2Id], references: [id])
   
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
 
 model Material {
-  id        String   @id @default(uuid())
-  name      String
-  thickness Float
-  cost      Float
-  pieces    Piece[]
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id          String   @id @default(uuid())
+  name        String
+  type        MaterialType
+  category    String   // ej. "Melamina 18mm", "PVC 0.45mm"
+  thickness   Float    // Crucial para cálculos de descuento
+  colorHex    String?  // Para representación visual en 3D/UI
+  isDefault   Boolean  @default(false)
+  width       Float?   @default(2440) // Ancho standard en mm
+  height      Float?   @default(1830) // Alto standard en mm
+  cost        Float    @default(0) // Still use cost but we can map it as unitCost in code
+  unitCost    Float    @default(0) // Explicit purchase cost
+  provider    String?
+  codigo      String?  @unique
+  
+  // Relations
+  pieces      Piece[]  @relation("PieceMaterial")
+  piecesL1    Piece[]  @relation("PieceEdgeL1")
+  piecesL2    Piece[]  @relation("PieceEdgeL2")
+  piecesA1    Piece[]  @relation("PieceEdgeA1")
+  piecesA2    Piece[]  @relation("PieceEdgeA2")
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 }
 
-model EdgeBand {
-  id        String   @id @default(uuid())
-  name      String
-  thickness Float
-  cost      Float
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+enum MachineType {
+  CUTTING
+  EDGE_BANDING
+  CNC
+}
+
+model Machine {
+  id                  String      @id @default(cuid())
+  name                String
+  type                MachineType
+  powerConsumptionKw  Float       @default(0) // Energy usage in kW
+  operationCostPerHour Float      @default(0) // Fixed maintenance/depreciation cost
+  processingSpeed     Float       @default(0) // Meters per minute
+  provider            String?
+  createdAt           DateTime    @default(now())
+  updatedAt           DateTime    @updatedAt
+}
+
+model GlobalConfig {
+  id                String   @id @default("singleton")
+  energyPricePerKwh Float    @default(0) // Local energy cost
+  consumablesRates  Json?    // Screws, glue, dowels pricing
+  profitMargin      Float    @default(30) // Default sales margin (%)
+  updatedAt         DateTime @updatedAt
 }

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { ArrowLeft, Plus, Edit2, Trash2, X, Save } from 'lucide-react';
+import { NewModuleTemplateModal } from './NewModuleTemplateModal';
 
 interface Pieza {
     alto: number;
@@ -58,10 +59,13 @@ export const WallModuleCatalog = () => {
         try {
             const res = await axios.get(`${apiBaseUrl}/api/module-templates?zona=WALL`);
             if (res.data.success) {
-                setItems(res.data.items);
+                setItems(res.data.templates || res.data.items || []); // Backend returns 'templates' not 'items'
+            } else {
+                setItems([]);
             }
         } catch (error) {
-            console.error('Error fetching module templates');
+            console.error('Error fetching module templates:', error);
+            setItems([]); // Set empty array on error
         } finally {
             setLoading(false);
         }
@@ -191,13 +195,15 @@ export const WallModuleCatalog = () => {
                                     <div className="bg-slate-50 rounded-lg p-3">
                                         <p className="text-xs font-bold text-slate-500 mb-2">PIEZAS HABILITADAS:</p>
                                         <div className="grid grid-cols-2 gap-2 text-xs">
-                                            {Object.entries(item.piezas).map(([key, pieza]: [string, Pieza]) =>
+                                            {item.piezas ? Object.entries(item.piezas).map(([key, pieza]: [string, Pieza]) =>
                                                 pieza.habilitado && (
                                                     <div key={key} className="bg-white px-2 py-1 rounded">
                                                         <span className="font-semibold capitalize">{key.replace(/([A-Z])/g, ' $1').trim()}</span>
                                                         <span className="text-slate-500 ml-1">{pieza.alto}×{pieza.ancho}</span>
                                                     </div>
                                                 )
+                                            ) : (
+                                                <p className="text-xs text-slate-400 col-span-2">Template creado con sistema nuevo</p>
                                             )}
                                         </div>
                                     </div>
@@ -214,12 +220,24 @@ export const WallModuleCatalog = () => {
                 </div>
             </main>
 
-            {/* Modal de Creación/Edición */}
-            {showModal && (
+
+            {/* Smart Wizard Modal - NEW (for creation) */}
+            {showModal && !editingItem && (
+                <NewModuleTemplateModal
+                    onClose={() => setShowModal(false)}
+                    onSuccess={() => {
+                        fetchItems();
+                        setShowModal(false);
+                    }}
+                />
+            )}
+
+            {/* Old Manual Modal - ONLY for editing existing templates */}
+            {showModal && editingItem && (
                 <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
                     <div className="bg-white rounded-2xl p-8 max-w-4xl w-full max-h-[90vh] overflow-y-auto">
                         <div className="flex justify-between items-center mb-6">
-                            <h2 className="text-2xl font-black text-slate-800">{editingItem ? 'EDITAR' : 'CREAR'} PLANTILLA AÉREA</h2>
+                            <h2 className="text-2xl font-black text-slate-800">EDITAR PLANTILLA AÉREA</h2>
                             <button onClick={() => setShowModal(false)} className="p-2 hover:bg-slate-100 rounded-lg">
                                 <X size={20} />
                             </button>

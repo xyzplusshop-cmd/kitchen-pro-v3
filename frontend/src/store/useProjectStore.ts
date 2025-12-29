@@ -23,6 +23,14 @@ interface Module {
     customPieces?: any[] | null;
     templateId?: string;
     drawerSystemId?: string;
+    // Stretchers System (Economic Furniture)
+    hasTopStretcher?: boolean;
+    hasBottomStretcher?: boolean;
+    hasFrontStretcher?: boolean;
+    hasBackPanel?: boolean;
+    backMountingType?: 'NAILED' | 'GROOVED';
+    grooveDepth?: number;
+    rearGap?: number;
 }
 
 export interface HardwareItem {
@@ -37,6 +45,7 @@ export interface HardwareItem {
 
 
 interface ProjectState {
+    projectId: string | null;
     projectName: string;
     clientName: string;
     linearLength: number; // en mm
@@ -57,6 +66,10 @@ interface ProjectState {
     materialColor: string;
     boardThickness: 15 | 18;
 
+    // Thickness Management (Source of Truth)
+    carcassThickness: 15 | 18;
+    frontsThickness: 15 | 18 | 22;
+
     // Reglas Globales de Cantos (Matriz)
     edgeRuleDoors: string;
     edgeRuleVisible: string;
@@ -75,15 +88,19 @@ interface ProjectState {
     wallHeight: number;
     baseDepth: number;
     wallDepth: number;
+    towerHeight: number;
     doorInstallationType: 'FULL_OVERLAY' | 'INSET';
     doorGap: number;
     drawerInstallationType: 'EXTERNAL' | 'INSET';
+    backMountingType: 'NAILED' | 'GROOVED' | 'INSET';
+    grooveDepth: number;
+    rearGap: number;
 
     hardwareCatalog: HardwareItem[];
 
     // Actions
     fetchHardware: () => Promise<void>;
-    setProjectData: (data: { projectName: string; clientName: string }) => void;
+    setProjectData: (data: { projectName?: string; clientName?: string; projectId?: string | null }) => void;
     setSpaceData: (length: number) => void;
     setApplianceData: (data: {
         hasStove: boolean;
@@ -94,6 +111,7 @@ interface ProjectState {
         hoodWidth?: number;
     }) => void;
     setMaterialData: (data: { materialColor: string; boardThickness: 15 | 18 }) => void;
+    setProjectThickness: (data: { carcassThickness: 15 | 18; frontsThickness: 15 | 18 | 22 }) => void;
     setEdgeRules: (data: { edgeRuleDoors: string; edgeRuleVisible: string; edgeRuleInternal: string }) => void;
     setExtraCosts: (data: { plinthLength: number; countertopLength: number }) => void;
     addModule: (module: Partial<Module> & { type: string; width: number; category: 'TOWER' | 'BASE' | 'WALL' }) => void;
@@ -111,19 +129,32 @@ interface ProjectState {
         wallHeight: number;
         baseDepth: number;
         wallDepth: number;
+        towerHeight: number;
         doorInstallationType: 'FULL_OVERLAY' | 'INSET';
         doorGap: number;
         drawerInstallationType: 'EXTERNAL' | 'INSET';
+        backMountingType: 'NAILED' | 'GROOVED' | 'INSET';
+        grooveDepth: number;
+        rearGap: number;
     }>) => void;
     loadProject: (project: any) => void;
     updateModuleCustomPieces: (moduleId: string, pieces: any[]) => void;
     replicateCustomPieces: (sourceModuleId: string, changedPieceNames: string[]) => Promise<void>;
+    updateModuleWidthCascade: (moduleId: string, newWidth: number, pieces: any[]) => void;
+    recalculateUsedSpace: () => void;
+    updateModuleStretchers: (moduleId: string, stretchers: {
+        hasTopStretcher?: boolean;
+        hasBottomStretcher?: boolean;
+        hasFrontStretcher?: boolean;
+        hasBackPanel?: boolean;
+    }) => void;
 
     // Computations
     getRemainingSpace: (category: 'TOWER' | 'BASE' | 'WALL') => number;
 }
 
 export const useProjectStore = create<ProjectState>((set, get) => ({
+    projectId: null,
     projectName: '',
     clientName: '',
     linearLength: 0,
@@ -132,6 +163,10 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
 
     materialColor: 'Blanco Frost',
     boardThickness: 18,
+
+    // Thickness defaults
+    carcassThickness: 18,
+    frontsThickness: 18,
 
     edgeRuleDoors: 'PVC 2mm',
     edgeRuleVisible: 'PVC 0.4mm',
@@ -157,6 +192,10 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     doorInstallationType: 'FULL_OVERLAY',
     doorGap: 3,
     drawerInstallationType: 'EXTERNAL',
+    towerHeight: 2100,
+    backMountingType: 'INSET',
+    grooveDepth: 9,
+    rearGap: 18,
 
     hardwareCatalog: [],
 
@@ -184,6 +223,11 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
         return { ...newState, modules: newModules };
     }),
     setMaterialData: (data) => set((state) => ({ ...state, ...data })),
+    setProjectThickness: (data) => set((state) => ({
+        ...state,
+        ...data,
+        boardThickness: data.carcassThickness // Sync with legacy field used in results
+    })),
     setEdgeRules: (data) => set((state) => ({ ...state, ...data })),
     setExtraCosts: (data) => set((state) => ({ ...state, ...data })),
 
@@ -255,6 +299,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     prevStep: () => set((state) => ({ currentStep: Math.max(1, state.currentStep - 1) })),
     goToStep: (step) => set({ currentStep: step }),
     resetProject: () => set({
+        projectId: null,
         projectName: '',
         clientName: '',
         linearLength: 0,
@@ -278,19 +323,24 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
         wallHeight: 720,
         baseDepth: 560,
         wallDepth: 320,
+        towerHeight: 2100,
         doorInstallationType: 'FULL_OVERLAY',
         doorGap: 3,
         drawerInstallationType: 'EXTERNAL',
+        backMountingType: 'INSET',
+        grooveDepth: 9,
+        rearGap: 18,
         modules: []
     }),
     setTechnicalConfig: (config) => set((state) => ({ ...state, ...config })),
     loadProject: (project) => set((state) => ({
         ...state,
+        projectId: project.id,
         projectName: project.name,
         clientName: project.clientName || '',
         linearLength: project.linearLength,
         modules: project.modules,
-        currentStep: 1,
+        currentStep: 6, // Set to Step 6 (Results) for direct viewing, or 1 if preferred
         // Carga de config si existe
         ...(project.config || {})
     })),
@@ -364,6 +414,61 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
         }));
 
         set({ modules: updatedModules });
+    },
+
+    // WIDTH CASCADE SYSTEM - Updates module width and recalculates space
+    updateModuleWidthCascade: (moduleId, newWidth, pieces) => {
+        set(state => ({
+            modules: state.modules.map(m =>
+                m.id === moduleId
+                    ? { ...m, width: newWidth, customPieces: pieces }
+                    : m
+            )
+        }));
+
+        // Trigger space recalculation
+        get().recalculateUsedSpace();
+    },
+
+    // RECALCULATE USED SPACE - Critical for global space tracking
+    recalculateUsedSpace: () => {
+        const state = get();
+        const { modules, hasStove, stoveWidth, hasSink, sinkWidth } = state;
+
+        // Calculate total used space by category
+        const towerSpace = modules.filter(m => m.category === 'TOWER').reduce((acc, m) => acc + m.width, 0);
+        const baseSpace = modules.filter(m => m.category === 'BASE').reduce((acc, m) => acc + m.width, 0);
+        const wallSpace = modules.filter(m => m.category === 'WALL').reduce((acc, m) => acc + m.width, 0);
+
+        // Add appliance space
+        const applianceSpace = (hasStove ? Number(stoveWidth) : 0) + (hasSink ? Number(sinkWidth) : 0);
+
+        const totalUsed = towerSpace + baseSpace + wallSpace + applianceSpace;
+
+        console.log('🔍 Space Recalculated:', {
+            towerSpace,
+            baseSpace,
+            wallSpace,
+            applianceSpace,
+            totalUsed,
+            linearLength: state.linearLength,
+            available: state.linearLength - totalUsed
+        });
+
+        // Note: This updates internal calculations, the UI reads from getRemainingSpace
+        // The recalculation triggers a re-render through state update
+        set({ modules: [...modules] }); // Force re-render
+    },
+
+    // UPDATE MODULE STRETCHERS - Sets stretcher configuration
+    updateModuleStretchers: (moduleId, stretchers) => {
+        set(state => ({
+            modules: state.modules.map(m =>
+                m.id === moduleId
+                    ? { ...m, ...stretchers }
+                    : m
+            )
+        }));
     },
 
     getRemainingSpace: (category) => {

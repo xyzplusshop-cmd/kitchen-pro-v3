@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import axios from 'axios';
 import { ArrowLeft, Plus, Upload, Edit2, Trash2, X, Save } from 'lucide-react';
 
@@ -11,10 +11,14 @@ interface HardwareItem {
     discountRules: any;
     price: number;
     brand?: string;
+    openingDegree?: number;
 }
 
 export const HardwareCatalog = () => {
     const navigate = useNavigate();
+    const [searchParams] = useSearchParams();
+    const categoryFilter = searchParams.get('category'); // e.g., 'BISAGRA' or 'CORREDERA'
+
     const [items, setItems] = useState<HardwareItem[]>([]);
     const [loading, setLoading] = useState(true);
     const [showModal, setShowModal] = useState(false);
@@ -32,7 +36,11 @@ export const HardwareCatalog = () => {
         try {
             const res = await axios.get(`${apiBaseUrl}/api/hardware`);
             if (res.data.success) {
-                setItems(res.data.items);
+                let fetchedItems = res.data.items;
+                if (categoryFilter) {
+                    fetchedItems = fetchedItems.filter((i: any) => i.category === categoryFilter);
+                }
+                setItems(fetchedItems);
             }
         } catch (error) {
             console.error('Error fetching hardware');
@@ -50,7 +58,8 @@ export const HardwareCatalog = () => {
             compatibility: (formData.get('compatibility') as string).split(',').map(s => s.trim()),
             discountRules: JSON.parse((formData.get('discountRules') as string) || '{}'),
             price: parseFloat(formData.get('price') as string),
-            brand: formData.get('brand') || null
+            brand: formData.get('brand') || null,
+            openingDegree: formData.get('openingDegree') ? parseInt(formData.get('openingDegree') as string) : null
         };
 
         try {
@@ -95,10 +104,12 @@ export const HardwareCatalog = () => {
         <div className="min-h-screen bg-slate-50">
             <nav className="bg-white border-b border-slate-200 px-6 py-4 flex justify-between items-center sticky top-0 z-10 shadow-sm">
                 <div className="flex items-center gap-4">
-                    <button onClick={() => navigate('/dashboard')} className="p-2 hover:bg-slate-100 rounded-lg transition">
+                    <button onClick={() => navigate('/catalogs/materials-hub')} className="p-2 hover:bg-slate-100 rounded-lg transition">
                         <ArrowLeft size={20} />
                     </button>
-                    <h1 className="text-xl font-black text-slate-800">CATÁLOGO DE HERRAJES</h1>
+                    <h1 className="text-xl font-black text-slate-800 uppercase tracking-tight">
+                        Catálogo de {categoryFilter ? (categoryFilter === 'BISAGRA' ? 'Bisagras' : 'Correderas') : 'Herrajes'}
+                    </h1>
                 </div>
                 <div className="flex gap-3">
                     <button onClick={() => setShowImportModal(true)} className="bg-purple-600 text-white px-4 py-2 rounded-xl flex items-center gap-2 hover:bg-purple-700 transition font-bold">
@@ -122,6 +133,7 @@ export const HardwareCatalog = () => {
                                 <tr>
                                     <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase">Nombre</th>
                                     <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase">Categoría</th>
+                                    <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase">Grados</th>
                                     <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase">Compatibilidad</th>
                                     <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase">Precio</th>
                                     <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase text-right">Acciones</th>
@@ -132,6 +144,7 @@ export const HardwareCatalog = () => {
                                     <tr key={item.id} className="hover:bg-green-50/30 transition group">
                                         <td className="px-6 py-4 font-bold text-slate-800">{item.name}</td>
                                         <td className="px-6 py-4 text-sm text-slate-600">{item.category}</td>
+                                        <td className="px-6 py-4 text-sm font-bold text-blue-600">{item.openingDegree ? `${item.openingDegree}°` : '-'}</td>
                                         <td className="px-6 py-4 text-xs text-slate-500">{item.compatibility.join(', ')}</td>
                                         <td className="px-6 py-4 text-sm font-bold text-green-700">${item.price}</td>
                                         <td className="px-6 py-4 text-right">
@@ -183,9 +196,15 @@ export const HardwareCatalog = () => {
                                 <label className="block text-sm font-bold text-slate-700 mb-1">Reglas de Descuento (JSON)</label>
                                 <input name="discountRules" defaultValue={JSON.stringify(editingItem?.discountRules || {})} required className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-green-500" />
                             </div>
-                            <div>
-                                <label className="block text-sm font-bold text-slate-700 mb-1">Precio</label>
-                                <input name="price" type="number" step="0.01" defaultValue={editingItem?.price} required className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-green-500" />
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-sm font-bold text-slate-700 mb-1">Precio</label>
+                                    <input name="price" type="number" step="0.01" defaultValue={editingItem?.price} required className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-green-500" />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-bold text-slate-700 mb-1">Grados (Bisagras)</label>
+                                    <input name="openingDegree" type="number" defaultValue={editingItem?.openingDegree || 110} className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-green-500" />
+                                </div>
                             </div>
                             <div>
                                 <label className="block text-sm font-bold text-slate-700 mb-1">Marca (opcional)</label>

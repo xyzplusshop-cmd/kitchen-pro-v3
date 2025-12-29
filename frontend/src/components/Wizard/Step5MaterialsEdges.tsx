@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useProjectStore } from '../../store/useProjectStore';
 import { ArrowLeft, Layers, Palette, Ruler, Info, Calculator } from 'lucide-react';
 
@@ -20,6 +20,17 @@ export const Step5MaterialsEdges = () => {
 
     const [localPlinth, setLocalPlinth] = useState(plinthLength);
     const [localCountertop, setLocalCountertop] = useState(countertopLength);
+
+    // Sync local state when store changes
+    useEffect(() => {
+        setLocalColor(materialColor);
+        setLocalThickness(boardThickness);
+        setLocalEdgeDoors(edgeRuleDoors);
+        setLocalEdgeVisible(edgeRuleVisible);
+        setLocalEdgeInternal(edgeRuleInternal);
+        setLocalPlinth(plinthLength);
+        setLocalCountertop(countertopLength);
+    }, [materialColor, boardThickness, edgeRuleDoors, edgeRuleVisible, edgeRuleInternal, plinthLength, countertopLength]);
 
     const materialOptions = [
         'Blanco Frost', 'Gris Grafito', 'Roble Americano', 'Nogal Terracota', 'Antracita'
@@ -66,7 +77,10 @@ export const Step5MaterialsEdges = () => {
                         <select
                             className="w-full p-4 rounded-xl border bg-slate-50 font-semibold focus:ring-2 focus:ring-blue-500 outline-none transition"
                             value={localColor}
-                            onChange={(e) => setLocalColor(e.target.value)}
+                            onChange={(e) => {
+                                setLocalColor(e.target.value);
+                                setMaterialData({ materialColor: e.target.value, boardThickness: localThickness as 15 | 18 });
+                            }}
                         >
                             {materialOptions.map(opt => <option key={opt} value={opt}>{opt}</option>)}
                         </select>
@@ -82,10 +96,13 @@ export const Step5MaterialsEdges = () => {
                                 <button
                                     key={th}
                                     type="button"
-                                    onClick={() => setLocalThickness(th as 15 | 18)}
+                                    onClick={() => {
+                                        setLocalThickness(th as 15 | 18);
+                                        setMaterialData({ materialColor: localColor, boardThickness: th as 15 | 18 });
+                                    }}
                                     className={`flex-1 py-4 rounded-xl border-2 font-bold transition ${localThickness === th
-                                            ? 'border-blue-600 bg-blue-50 text-blue-700'
-                                            : 'border-slate-100 bg-white text-slate-400 hover:border-slate-200'
+                                        ? 'border-blue-600 bg-blue-50 text-blue-700'
+                                        : 'border-slate-100 bg-white text-slate-400 hover:border-slate-200'
                                         }`}
                                 >
                                     {th} mm
@@ -115,7 +132,14 @@ export const Step5MaterialsEdges = () => {
                             <select
                                 className="w-full p-3 rounded-lg border bg-white font-bold text-slate-700 focus:ring-2 focus:ring-blue-500 outline-none"
                                 value={localEdgeDoors}
-                                onChange={(e) => setLocalEdgeDoors(e.target.value)}
+                                onChange={(e) => {
+                                    setLocalEdgeDoors(e.target.value);
+                                    setEdgeRules({
+                                        edgeRuleDoors: e.target.value,
+                                        edgeRuleVisible: localEdgeVisible,
+                                        edgeRuleInternal: localEdgeInternal
+                                    });
+                                }}
                             >
                                 {edgeOptions.map(opt => <option key={opt} value={opt}>{opt}</option>)}
                             </select>
@@ -125,7 +149,14 @@ export const Step5MaterialsEdges = () => {
                             <select
                                 className="w-full p-3 rounded-lg border bg-white font-bold text-slate-700 focus:ring-2 focus:ring-blue-500 outline-none"
                                 value={localEdgeVisible}
-                                onChange={(e) => setLocalEdgeVisible(e.target.value)}
+                                onChange={(e) => {
+                                    setLocalEdgeVisible(e.target.value);
+                                    setEdgeRules({
+                                        edgeRuleDoors: localEdgeDoors,
+                                        edgeRuleVisible: e.target.value,
+                                        edgeRuleInternal: localEdgeInternal
+                                    });
+                                }}
                             >
                                 {edgeOptions.map(opt => <option key={opt} value={opt}>{opt}</option>)}
                             </select>
@@ -135,7 +166,14 @@ export const Step5MaterialsEdges = () => {
                             <select
                                 className="w-full p-3 rounded-lg border bg-white font-bold text-slate-700 focus:ring-2 focus:ring-blue-500 outline-none"
                                 value={localEdgeInternal}
-                                onChange={(e) => setLocalEdgeInternal(e.target.value)}
+                                onChange={(e) => {
+                                    setLocalEdgeInternal(e.target.value);
+                                    setEdgeRules({
+                                        edgeRuleDoors: localEdgeDoors,
+                                        edgeRuleVisible: localEdgeVisible,
+                                        edgeRuleInternal: e.target.value
+                                    });
+                                }}
                             >
                                 {edgeOptions.map(opt => <option key={opt} value={opt}>{opt}</option>)}
                             </select>
@@ -161,7 +199,11 @@ export const Step5MaterialsEdges = () => {
                                     type="number"
                                     className="grow p-3 rounded-lg border bg-slate-50 font-bold outline-none focus:ring-2 focus:ring-blue-500"
                                     value={localPlinth}
-                                    onChange={(e) => setLocalPlinth(Number(e.target.value))}
+                                    onChange={(e) => {
+                                        const val = Number(e.target.value);
+                                        setLocalPlinth(val);
+                                        setExtraCosts({ plinthLength: val, countertopLength: localCountertop });
+                                    }}
                                 />
                                 <span className="text-slate-400 font-bold">ml</span>
                             </div>
@@ -173,7 +215,11 @@ export const Step5MaterialsEdges = () => {
                                     type="number"
                                     className="grow p-3 rounded-lg border bg-slate-50 font-bold outline-none focus:ring-2 focus:ring-blue-500"
                                     value={localCountertop}
-                                    onChange={(e) => setLocalCountertop(Number(e.target.value))}
+                                    onChange={(e) => {
+                                        const val = Number(e.target.value);
+                                        setLocalCountertop(val);
+                                        setExtraCosts({ plinthLength: localPlinth, countertopLength: val });
+                                    }}
                                 />
                                 <span className="text-slate-400 font-bold">ml</span>
                             </div>

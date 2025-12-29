@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useProjectStore } from '../../store/useProjectStore';
-import { ArrowLeft, Plus, Trash2, Info, Lock, Unlock, Settings2, Layout, LayoutGrid, Layers, Settings, FileText, CheckCircle2, AlertCircle } from 'lucide-react';
+import { ArrowLeft, Plus, Trash2, Info, Lock, Unlock, Settings2, Layout, LayoutGrid, Layers, Settings, AlertCircle } from 'lucide-react';
 import axios from 'axios';
 import { CutlistEditorModal } from './CutlistEditorModal';
 
@@ -23,10 +23,13 @@ export const Step3ModuleSelection = () => {
                 const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:4000';
                 const res = await axios.get(`${apiBaseUrl}/api/module-templates?zona=${activeTab}`);
                 if (res.data.success) {
-                    setDbTemplates(res.data.items);
+                    setDbTemplates(res.data.templates || res.data.items || []); // Backend returns 'templates' not 'items'
+                } else {
+                    setDbTemplates([]);
                 }
             } catch (error) {
                 console.error('Error fetching templates:', error);
+                setDbTemplates([]); // Set empty array on error to prevent crash
             } finally {
                 setIsLoading(false);
             }
@@ -79,7 +82,7 @@ export const Step3ModuleSelection = () => {
                 <div className="space-y-3">
                     {isLoading ? (
                         <div className="py-10 text-center text-slate-400 text-sm animate-pulse">Cargando catálogo...</div>
-                    ) : dbTemplates.length > 0 ? (
+                    ) : (dbTemplates && dbTemplates.length > 0) ? (
                         dbTemplates.map(item => (
                             <button
                                 key={item.id}
