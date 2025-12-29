@@ -697,7 +697,7 @@ interface ProjectData {
     boardThickness: number; // Legacy/Fallback
     carcassThickness: number;
     frontsThickness: number;
-    edgeRules: EdgeRules;
+    edgerules: any;
     modules: any[];
     config: {
         baseHeight: number;
@@ -719,10 +719,18 @@ interface ProjectData {
     };
 }
 
-const getEdgeThickness = (rule: string): number => {
-    if (rule.includes('2mm')) return 2;
-    if (rule.includes('0.4mm')) return 0.4;
-    return 0;
+// ✅ Data-Driven Edge Thickness Function
+// Receives Material IDs and fetches thickness from database
+const getEdgeThicknessFromMaterial = async (materialId: string | null | undefined): Promise<number> => {
+    if (!materialId || materialId === 'none') return 0;
+
+    try {
+        const material = await prisma.material.findUnique({ where: { id: materialId } });
+        return material ? material.thickness : 0;
+    } catch (error) {
+        console.error(`Error fetching edge material ${materialId}:`, error);
+        return 0;
+    }
 };
 
 // === STRETCHERS SYSTEM HELPERS ===
@@ -816,7 +824,7 @@ const generateBackPanel = (
 };
 
 // === MOTOR DE GENERACIÓN DE PIEZAS ===
-const generateModulePieces = (module: any, carcassThickness: number, frontsThickness: number, rules: EdgeRules, config: ProjectData['config'], hardwareMap: Map<string, any>) => {
+const generateModulePieces = (module: any, carcassThickness: number, frontsThickness: number, rules: any, config: ProjectData['config'], hardwareMap: Map<string, any>) => {
     let pieces: any[] = [];
     const { type, width, category, templateId, customPieces } = module;
 
@@ -840,9 +848,10 @@ const generateModulePieces = (module: any, carcassThickness: number, frontsThick
 
     let doorGap = hinge?.discountRules?.gap ?? config.doorGap ?? 3;
 
-    const tDoors = getEdgeThickness(rules.doors);
-    const tVisible = getEdgeThickness(rules.visible);
-    const tInternal = getEdgeThickness(rules.internal);
+    // ✅ Extract thickness from Material-based edgeConfig (Data-Driven)
+    const tDoors = rules.doorsThickness || 0;
+    const tVisible = rules.structureThickness || 0;
+    const tInternal = 0; // Internal edges typically not edged
 
     // Back Mounting Config Extraction
     const mountingConfig = {
@@ -1170,8 +1179,9 @@ app.post('/api/generate-pieces', async (req, res) => {
         drawerSystems.forEach(item => hardwareMap.set(item.id, item));
 
         const carcassThickness = boardThickness || 15;
-        const frontsThickness = 18; // Default for generate-pieces endpoint
-        const pieces = generateModulePieces(mod, carcassThickness, frontsThickness, edgeRules, config, hardwareMap);
+        const frontsThickness = 18;
+        const edgeConfig = { doorsThickness: 2, structureThickness: 0.4, doorsMaterialId: null, structureMaterialId: null };
+        const pieces = generateModulePieces(mod, carcassThickness, frontsThickness, edgeConfig, config, hardwareMap);
         res.json({ success: true, pieces });
     } catch (error: any) {
         res.status(500).json({ success: false, error: error.message });
@@ -1199,7 +1209,34 @@ app.post('/api/calculate-project', async (req, res) => {
         const allPieces: any[] = [];
         let totalHardwareCost = 0;
 
-        // 1. Recopilar herrajes únicos usados
+        // 1. Fetch edge materials by ID (Data-Driven)
+        const edgeMaterialIds = {
+            doors: (project as any).edgeMaterials?.doors,
+            structure: (project as any).edgeMaterials?.structure
+        };
+
+        const [doorEdgeMaterial, structureEdgeMaterial] = await Promise.all([
+            edgeMaterialIds.doors && edgeMaterialIds.doors !== 'none'
+                ? prisma.material.findUnique({ where: { id: edgeMaterialIds.doors } })
+                : Promise.resolve(null),
+            edgeMaterialIds.structure && edgeMaterialIds.structure !== 'none'
+                ? prisma.material.findUnique({ where: { id: edgeMaterialIds.structure } })
+                : Promise.resolve(null)
+        ]);
+
+        console.log('✅ Edge Materials:', {
+            doors: doorEdgeMaterial ? `${doorEdgeMaterial.name} (${doorEdgeMaterial.thickness}mm)` : 'None',
+            structure: structureEdgeMaterial ? `${structureEdgeMaterial.name} (${structureEdgeMaterial.thickness}mm)` : 'None'
+        });
+
+        const edgeConfig = {
+            doorsMaterialId: doorEdgeMaterial?.id || null,
+            doorsThickness: doorEdgeMaterial?.thickness || 0,
+            structureMaterialId: structureEdgeMaterial?.id || null,
+            structureThickness: structureEdgeMaterial?.thickness || 0
+        };
+
+        // 2. Recopilar herrajes únicos usados
         const hingeIds = [...new Set(project.modules.map(m => m.hingeId).filter(id => !!id))];
         const sliderIds = [...new Set(project.modules.map(m => m.sliderId).filter(id => !!id))];
         const drawerSystemIds = [...new Set(project.modules.map(m => (m as any).drawerSystemId).filter(id => !!id))];
@@ -1243,7 +1280,7 @@ app.post('/api/calculate-project', async (req, res) => {
             }
 
             console.log(`🔨 Calculando Módulo:`, { category: mod.category, width: mod.width, type: mod.type, code: modCode });
-            const modPieces = generateModulePieces(mod, carcassThickness, frontsThickness, project.edgeRules, project.config, hardwareMap);
+            const modPieces = generateModulePieces(mod, carcassThickness, frontsThickness, edgeConfig, project.config, hardwareMap);
 
             // Calcular medidas de corte para cada pieza generada
             const calculated = modPieces.map((p, pIdx) => {
@@ -1398,7 +1435,6 @@ app.put('/api/projects/:id', async (req: any, res) => {
                         finalWidth: Number(p.finalWidth),
                         finalHeight: Number(p.finalHeight),
                         quantity: Number(p.quantity || 1),
-                        material: p.material || null,
                         edgeL1Id: p.edgeL1Id || null,
                         edgeL2Id: p.edgeL2Id || null,
                         edgeA1Id: p.edgeA1Id || null,
@@ -1424,6 +1460,8 @@ app.put('/api/projects/:id', async (req: any, res) => {
                     name: String(projectName),
                     clientName: clientName ? String(clientName) : null,
                     linearLength: Number(linearLength),
+                    carcassThickness: Number(req.body.carcassThickness || config.carcassThickness || 18),
+                    frontsThickness: Number(req.body.frontsThickness || config.frontsThickness || 18),
                     thumbnail: thumbnail || null,
                     config: config || {},
                     backMountingType: config.backMountingType || 'NAILED',
@@ -1547,7 +1585,6 @@ app.post('/api/projects', async (req: any, res) => {
                         finalWidth: Number(p.finalWidth),
                         finalHeight: Number(p.finalHeight),
                         quantity: Number(p.quantity || 1),
-                        material: p.material || null,
                         edgeL1Id: p.edgeL1Id || null,
                         edgeL2Id: p.edgeL2Id || null,
                         edgeA1Id: p.edgeA1Id || null,
@@ -1565,6 +1602,8 @@ app.post('/api/projects', async (req: any, res) => {
                 name: String(projectName),
                 clientName: clientName ? String(clientName) : null,
                 linearLength: Number(linearLength),
+                carcassThickness: Number(req.body.carcassThickness || config.carcassThickness || 18),
+                frontsThickness: Number(req.body.frontsThickness || config.frontsThickness || 18),
                 userId: finalUserId,
                 openingSystem: String(req.body.openingSystem || 'HANDLE'),
                 thumbnail: thumbnail || null,
@@ -1670,3 +1709,5 @@ app.listen(Number(PORT), '0.0.0.0', () => {
     console.log(`🚀 [SERVER] Kitchen Pro API corriendo en el puerto ${PORT}`);
     console.log(`🔧 [ENV] NODE_ENV: ${process.env.NODE_ENV || 'development'}`);
 });
+
+

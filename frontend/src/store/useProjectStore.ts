@@ -70,10 +70,9 @@ interface ProjectState {
     carcassThickness: 15 | 18;
     frontsThickness: 15 | 18 | 22;
 
-    // Reglas Globales de Cantos (Matriz)
-    edgeRuleDoors: string;
-    edgeRuleVisible: string;
-    edgeRuleInternal: string;
+    // Material-Based Edge Configuration (Data-Driven)
+    edgeMaterialDoors: string | null;      // Material ID for door/drawer fronts
+    edgeMaterialStructure: string | null;  // Material ID for visible structure edges
 
     // Costos Adicionales
     plinthLength: number;
@@ -112,7 +111,7 @@ interface ProjectState {
     }) => void;
     setMaterialData: (data: { materialColor: string; boardThickness: 15 | 18 }) => void;
     setProjectThickness: (data: { carcassThickness: 15 | 18; frontsThickness: 15 | 18 | 22 }) => void;
-    setEdgeRules: (data: { edgeRuleDoors: string; edgeRuleVisible: string; edgeRuleInternal: string }) => void;
+    setEdgeMaterials: (data: { edgeMaterialDoors: string | null; edgeMaterialStructure: string | null }) => void;
     setExtraCosts: (data: { plinthLength: number; countertopLength: number }) => void;
     addModule: (module: Partial<Module> & { type: string; width: number; category: 'TOWER' | 'BASE' | 'WALL' }) => void;
     updateModule: (id: string, data: Partial<Module>) => void;
@@ -168,9 +167,8 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     carcassThickness: 18,
     frontsThickness: 18,
 
-    edgeRuleDoors: 'PVC 2mm',
-    edgeRuleVisible: 'PVC 0.4mm',
-    edgeRuleInternal: 'Ninguno',
+    edgeMaterialDoors: null,      // Will be set in Step 5 from DB materials
+    edgeMaterialStructure: null,  // Will be set in Step 5 from DB materials
 
     plinthLength: 0,
     countertopLength: 0,
@@ -228,7 +226,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
         ...data,
         boardThickness: data.carcassThickness // Sync with legacy field used in results
     })),
-    setEdgeRules: (data) => set((state) => ({ ...state, ...data })),
+    setEdgeMaterials: (data) => set((state) => ({ ...state, ...data })),
     setExtraCosts: (data) => set((state) => ({ ...state, ...data })),
 
     addModule: (module) => set((state) => {
@@ -313,9 +311,8 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
         hoodWidth: 600,
         materialColor: 'Blanco Frost',
         boardThickness: 18,
-        edgeRuleDoors: 'PVC 2mm',
-        edgeRuleVisible: 'PVC 0.4mm',
-        edgeRuleInternal: 'Ninguno',
+        edgeMaterialDoors: null,
+        edgeMaterialStructure: null,
         plinthLength: 0,
         countertopLength: 0,
         baseHeight: 720,

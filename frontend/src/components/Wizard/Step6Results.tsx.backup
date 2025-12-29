@@ -1,4 +1,4 @@
-﻿import { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useProjectStore } from '../../store/useProjectStore';
 import { ArrowLeft, Download, FileText, Layout, Printer, CheckCircle2, Loader2, AlertCircle, DollarSign, Tag } from 'lucide-react';
 import axios from 'axios';
@@ -23,13 +23,13 @@ export const Step6Results = () => {
         plinthLength, countertopLength
     } = useProjectStore();
 
+
+
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [results, setResults] = useState<any>(null);
     const [allMaterials, setAllMaterials] = useState<any[]>([]);
     const [activeTab, setActiveTab] = useState<'despiece' | 'costos'>('despiece');
-    const [saving, setSaving] = useState(false);
-
     const [salesConfig, setSalesConfig] = useState<SalesConfiguration>({
         profitMargin: 40,
         taxRate: 18,
@@ -75,14 +75,17 @@ export const Step6Results = () => {
                 setLoading(false);
             } catch (err: any) {
 
-                setError(err.message || 'Error al conectar con el motor matemÃ¡tico');
+                setError(err.message || 'Error al conectar con el motor matemático');
                 setLoading(false);
             }
         };
 
         fetchMaterials();
         calculateProject();
-    }, [projectName, linearLength, boardThickness, edgeMaterialDoors, edgeMaterialStructure, modules]);
+    }, [projectName, linearLength, boardThickness, edgeRuleDoors, edgeRuleVisible, edgeRuleInternal, modules]);
+
+
+    const [saving, setSaving] = useState(false);
 
     const handleSaveProject = async () => {
         try {
@@ -99,18 +102,18 @@ export const Step6Results = () => {
                     baseDepth, wallDepth,
                     doorInstallationType, doorGap, drawerInstallationType,
                     boardThickness,
-                    edgeMaterialDoors, edgeMaterialStructure,
+                    edgeRuleDoors, edgeRuleVisible, edgeRuleInternal,
                     plinthLength, countertopLength
                 },
                 thumbnail: null,
                 totalPrice: results?.summary.totalEstimatedPrice || 0
             });
 
-            alert(`âœ… Â¡PROYECTO GUARDADO CON Ã‰XITO!\n\nID: ${response.data.id}\n${response.data.message}\n\nYa puedes acceder a este diseÃ±o desde tu panel.`);
-            // window.location.href = '/dashboard'; // Descomentar cuando el dashboard estÃ© listo
+            alert(`✅ ¡PROYECTO GUARDADO CON ÉXITO!\n\nID: ${response.data.id}\n${response.data.message}\n\nYa puedes acceder a este diseño desde tu panel.`);
+            // window.location.href = '/dashboard'; // Descomentar cuando el dashboard esté listo
         } catch (err: any) {
             console.error('Save Error:', err);
-            alert('âŒ Error al guardar el proyecto: ' + (err.response?.data?.error || err.message));
+            alert('❌ Error al guardar el proyecto: ' + (err.response?.data?.error || err.message));
         } finally {
             setSaving(false);
         }
@@ -152,7 +155,7 @@ export const Step6Results = () => {
                     };
                 });
 
-            console.log('ðŸ“¦ Generating labels for', labelData.length, 'pieces');
+            console.log('📦 Generating labels for', labelData.length, 'pieces');
 
             // Generate PDF
             const doc = generateLabelsDocument(labelData);
@@ -169,7 +172,7 @@ export const Step6Results = () => {
 
     const handleGenerateQuote = async () => {
         if (!results || !modules) {
-            alert('No hay datos para generar cotizaciÃ³n');
+            alert('No hay datos para generar cotización');
             return;
         }
 
@@ -199,12 +202,12 @@ export const Step6Results = () => {
 
                 const categoryNames: Record<string, string> = {
                     'BASE': 'Base',
-                    'WALL': 'AÃ©reo',
+                    'WALL': 'Aéreo',
                     'TOWER': 'Torre',
                 };
 
                 const moduleName = `${categoryNames[mod.category] || mod.category} - ${typeNames[mod.type] || mod.type}`;
-                const dimensions = `${mod.width}cm Ã— ${mod.height || 850}cm Ã— ${mod.depth || 560}cm`;
+                const dimensions = `${mod.width}cm × ${mod.height || 850}cm × ${mod.depth || 560}cm`;
 
                 return {
                     id: mod.id || `mod-${idx}`,
@@ -240,7 +243,7 @@ export const Step6Results = () => {
                 showPricePerModule: salesConfig.showPricePerModule,
             };
 
-            console.log('ðŸ“„ Generating quote for', quoteModules.length, 'modules');
+            console.log('📄 Generating quote for', quoteModules.length, 'modules');
 
             // Generate PDF
             const doc = generateQuoteDocument(quote);
@@ -251,7 +254,7 @@ export const Step6Results = () => {
             window.open(url, '_blank');
         } catch (error) {
             console.error('Error generating quote:', error);
-            alert('Error al generar cotizaciÃ³n: ' + (error as Error).message);
+            alert('Error al generar cotización: ' + (error as Error).message);
         }
     };
 
@@ -260,7 +263,7 @@ export const Step6Results = () => {
             <div className="flex flex-col items-center justify-center py-40 animate-pulse">
                 <Loader2 size={48} className="text-blue-600 animate-spin mb-4" />
                 <h2 className="text-2xl font-bold text-slate-800">Cerebro Calculando...</h2>
-                <p className="text-slate-500">Generando despiece milimÃ©trico y optimizando materiales.</p>
+                <p className="text-slate-500">Generando despiece milimétrico y optimizando materiales.</p>
             </div>
         );
     }
@@ -271,10 +274,10 @@ export const Step6Results = () => {
                 <div className="bg-red-500 text-white w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-6 shadow-lg">
                     <AlertCircle size={40} />
                 </div>
-                <h2 className="text-2xl font-black text-red-900 uppercase tracking-tight mb-2">Error de ConexiÃ³n</h2>
+                <h2 className="text-2xl font-black text-red-900 uppercase tracking-tight mb-2">Error de Conexión</h2>
                 <p className="text-red-700 font-medium mb-8">
                     {error.includes('Network Error')
-                        ? 'No se pudo conectar con el motor de cÃ¡lculo en Railway. Verifica tu internet o intenta de nuevo.'
+                        ? 'No se pudo conectar con el motor de cálculo en Railway. Verifica tu internet o intenta de nuevo.'
                         : error}
                 </p>
 
@@ -283,7 +286,7 @@ export const Step6Results = () => {
                         onClick={() => window.location.reload()}
                         className="w-full bg-red-600 text-white py-4 rounded-xl font-black shadow-xl hover:bg-red-700 transition uppercase tracking-widest flex items-center justify-center gap-2"
                     >
-                        <Loader2 size={20} className="animate-spin" /> Reintentar CÃ¡lculo
+                        <Loader2 size={20} className="animate-spin" /> Reintentar Cálculo
                     </button>
 
                     <div className="grid grid-cols-2 gap-3">
@@ -314,7 +317,7 @@ export const Step6Results = () => {
 
     return (
         <div className="max-w-7xl mx-auto space-y-8 animate-in fade-in duration-500">
-            {/* Cabecera de Ã‰xito */}
+            {/* Cabecera de Éxito */}
             <div className="bg-green-600 text-white p-8 rounded-3xl shadow-xl flex justify-between items-center print:hidden">
                 <div className="flex items-center gap-4">
                     <div className="bg-white/20 p-3 rounded-full">
@@ -322,15 +325,20 @@ export const Step6Results = () => {
                     </div>
                     <div>
                         <h2 className="text-3xl font-black italic uppercase tracking-tighter">Proyecto: {projectName}</h2>
-                        <p className="text-green-100 font-bold">CÃ¡lculo completado con precisiÃ³n milimÃ©trica</p>
+                        <p className="text-green-100 font-bold">Cálculo completado con precisión milimétrica</p>
                     </div>
                 </div>
                 <div className="flex gap-4">
                     <button
-                        onClick={handleGenerateQuote}
-                        className="flex items-center gap-2 bg-green-600 text-white px-6 py-2 rounded-xl transition font-black shadow-lg shadow-green-900/20 hover:scale-105"
+                        onClick={resetProject}
+                        className="flex items-center gap-2 bg-white/10 hover:bg-white/20 px-4 py-2 rounded-xl transition font-bold border border-white/30"
                     >
-                        <FileText size={18} /> GENERAR COTIZACIÓN
+                        <Layout size={18} /> Nuevo Proyecto
+                    </button>
+                    <button
+                        onClick={handleGenerateQuote}
+                        className="flex items-center gap-2 bg-purple-600 hover:bg-purple-700 px-6 py-2 rounded-xl transition font-bold shadow-lg hover:scale-105">
+                        <FileText size={18} /> Generar Cotizaci�n
                     </button>
                     <button
                         onClick={() => window.print()}
@@ -338,31 +346,15 @@ export const Step6Results = () => {
                     >
                         <Printer size={18} /> Imprimir
                     </button>
-                    <button
-                        onClick={resetProject}
-                        className="flex items-center gap-2 bg-white text-blue-700 border-2 border-blue-200 px-4 py-2 rounded-xl font-bold hover:bg-blue-50 transition"
-                    >
-                        <Layout size={18} /> Nuevo Proyecto
-                    </button>
                     <button className="flex items-center gap-2 bg-white text-green-700 px-6 py-2 rounded-xl transition font-black shadow-lg shadow-green-900/20 hover:scale-105">
                         <Download size={18} /> EXPORTAR
                     </button>
                 </div>
             </div>
 
-            {/* Panel de Configuración de Ventas (Protegido contra nulls) */}
-            {results && (
-                <div className="mb-8 print:hidden">
-                    <SalesConfig
-                        costTotal={results.summary.totalEstimatedPrice || 0}
-                        onConfigChange={setSalesConfig}
-                    />
-                </div>
-            )}
-
-            {/* Cabecera de ImpresiÃ³n (Solo visible al imprimir) */}
+            {/* Cabecera de Impresión (Solo visible al imprimir) */}
             <div className="hidden print:block border-b-4 border-slate-900 pb-4 mb-8">
-                <h1 className="text-4xl font-black uppercase tracking-tighter">Reporte TÃ©cnico: {projectName}</h1>
+                <h1 className="text-4xl font-black uppercase tracking-tighter">Reporte Técnico: {projectName}</h1>
                 <div className="grid grid-cols-2 gap-4 mt-4 text-sm font-bold text-slate-600">
                     <p>Cliente: Demo</p>
                     <p>Pared: {linearLength}mm</p>
@@ -371,15 +363,19 @@ export const Step6Results = () => {
                 </div>
             </div>
 
+            {/* Sales Configuration Panel */}
+            <SalesConfig
+                costTotal={results?.summary.totalEstimatedPrice || 0}
+                onConfigChange={setSalesConfig}
+            />
 
-
-            {/* Selector de PestaÃ±as */}
+            {/* Selector de Pestañas */}
             <div className="flex gap-2 p-1 bg-slate-100 rounded-2xl w-fit print:hidden">
                 <button
                     onClick={() => setActiveTab('despiece')}
                     className={`px-6 py-2 rounded-xl font-bold transition flex items-center gap-2 ${activeTab === 'despiece' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:bg-white/50'}`}
                 >
-                    <FileText size={18} /> Despiece TÃ©cnico
+                    <FileText size={18} /> Despiece Técnico
                 </button>
                 <button
                     onClick={() => setActiveTab('costos')}
@@ -391,7 +387,7 @@ export const Step6Results = () => {
 
             {activeTab === 'despiece' ? (
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                    {/* Lista de Corte (Tabla TÃ©cnica) */}
+                    {/* Lista de Corte (Tabla Técnica) */}
                     <div className="lg:col-span-2 bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden print:border-none print:shadow-none">
                         <div className="p-6 border-b flex justify-between items-center bg-slate-50 print:bg-white">
                             <h3 className="font-black text-slate-800 flex items-center gap-2">
@@ -404,7 +400,7 @@ export const Step6Results = () => {
                                         if (results?.pieces && allMaterials.length > 0) {
                                             exportCutlistToCSV(results.pieces, allMaterials, projectName);
                                         } else {
-                                            alert('âš ï¸ No hay piezas para exportar o faltan datos de materiales.');
+                                            alert('⚠️ No hay piezas para exportar o faltan datos de materiales.');
                                         }
                                     }}
                                     className="print:hidden flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-xl font-bold hover:bg-green-700 transition shadow-md"
@@ -430,20 +426,20 @@ export const Step6Results = () => {
                                         <th className="px-6 py-4">Cant</th>
                                         <th className="px-6 py-4">Final (mm)</th>
                                         <th className="px-6 py-4 font-black text-blue-600 print:text-slate-900">Corte (mm)</th>
-                                        <th className="px-6 py-4 print:hidden">MÃ³dulo</th>
+                                        <th className="px-6 py-4 print:hidden">Módulo</th>
                                         <th className="px-6 py-4 print:hidden text-center">CNC</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-slate-100">
                                     {['TOWER', 'BASE', 'WALL'].map(cat => {
-                                        const catPieces = results?.pieces?.filter((p: any) => p.category === cat) || [];
-                                        if (catPieces.length === 0) return null;
+                                        const catPieces = results?.pieces.filter((p: any) => p.category === cat);
+                                        if (!catPieces || catPieces.length === 0) return null;
 
                                         return (
                                             <div key={cat} className="contents">
                                                 <tr className="bg-slate-50 print:bg-slate-100">
                                                     <td colSpan={6} className="px-6 py-2 font-black text-[10px] text-blue-600 uppercase tracking-widest leading-none">
-                                                        Zona: {cat === 'TOWER' ? 'Torres y Columnas' : cat === 'BASE' ? 'Muebles Bajos' : 'Muebles AÃ©reos'}
+                                                        Zona: {cat === 'TOWER' ? 'Torres y Columnas' : cat === 'BASE' ? 'Muebles Bajos' : 'Muebles Aéreos'}
                                                     </td>
                                                 </tr>
                                                 {catPieces.map((p: any, idx: number) => (
@@ -463,14 +459,14 @@ export const Step6Results = () => {
                         </div>
                     </div>
 
-                    {/* Resumen de Materiales y VisualizaciÃ³n 2D */}
+                    {/* Resumen de Materiales y Visualización 2D */}
                     <div className="space-y-8 print:break-before-page">
-                        {/* VisualizaciÃ³n 2D Plano Cenital */}
+                        {/* Visualización 2D Plano Cenital */}
                         <div className="bg-slate-900 p-6 rounded-3xl shadow-2xl relative group print:bg-white print:border-2 print:border-slate-200 print:shadow-none print:text-slate-900">
                             <div className="flex justify-between items-center mb-6">
                                 <h3 className="text-white font-black text-sm flex items-center gap-2 print:text-slate-900">
                                     <Layout size={18} className="text-blue-400 print:hidden" />
-                                    PLANO TÃ‰CNICO 2D
+                                    PLANO TÉCNICO 2D
                                 </h3>
                             </div>
                             <div className="aspect-video bg-slate-800 rounded-xl border border-slate-700 flex items-center justify-center overflow-hidden print:bg-white print:border-slate-300">
@@ -482,10 +478,10 @@ export const Step6Results = () => {
                                     <div className="absolute -bottom-6 right-0 text-[10px] text-slate-500 font-bold">{linearLength}mm</div>
                                 </div>
                             </div>
-                            <p className="text-[10px] text-slate-500 mt-6 text-center italic">Vista: Planta Cenital (MÃ³dulos Bajos)</p>
+                            <p className="text-[10px] text-slate-500 mt-6 text-center italic">Vista: Planta Cenital (Módulos Bajos)</p>
                         </div>
 
-                        {/* Presupuesto y BotÃ³n Guardar */}
+                        {/* Presupuesto y Botón Guardar */}
                         <div className="bg-white p-8 rounded-3xl shadow-sm border border-slate-200 print:hidden">
                             <h3 className="font-black text-slate-800 mb-6 border-b pb-4 tracking-tighter uppercase">Resumen de Materiales</h3>
                             <div className="space-y-4">
@@ -526,7 +522,7 @@ export const Step6Results = () => {
                                 {saving ? (
                                     <><Loader2 className="animate-spin" size={20} /> GUARDANDO...</>
                                 ) : (
-                                    'GUARDAR EN CLOUD â˜ï¸'
+                                    'GUARDAR EN CLOUD ☁️'
                                 )}
                             </button>
                         </div>
@@ -538,7 +534,7 @@ export const Step6Results = () => {
 
             <div className="flex justify-between items-center pt-8 border-t border-slate-100 print:hidden">
                 <button onClick={prevStep} className="text-slate-400 font-bold hover:text-slate-600 transition flex items-center gap-2">
-                    <ArrowLeft size={18} /> Volver a ediciÃ³n
+                    <ArrowLeft size={18} /> Volver a edición
                 </button>
 
                 <button
@@ -554,7 +550,5 @@ export const Step6Results = () => {
         </div>
     );
 };
-
-
 
 
