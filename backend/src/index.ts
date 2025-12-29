@@ -111,7 +111,16 @@ app.post('/api/auth/register', async (req, res) => {
         });
 
         const token = jwt.sign({ id: user.id }, JWT_SECRET, { expiresIn: '7d' });
-        res.cookie('token', token, { httpOnly: true, secure: true, sameSite: 'none' });
+
+        // Environment-based cookie settings for production HTTPS
+        const isProduction = process.env.NODE_ENV === 'production';
+        const cookieOptions = {
+            httpOnly: true,
+            secure: isProduction, // HTTPS only in production
+            sameSite: (isProduction ? 'none' : 'lax') as 'none' | 'lax', // Cross-domain in production
+            maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
+        };
+        res.cookie('token', token, cookieOptions);
 
         res.json({ success: true, user: { id: user.id, email: user.email, name: user.name } });
     } catch (error: any) {
@@ -129,7 +138,16 @@ app.post('/api/auth/login', async (req, res) => {
         }
 
         const token = jwt.sign({ id: user.id }, JWT_SECRET, { expiresIn: '7d' });
-        res.cookie('token', token, { httpOnly: true, secure: true, sameSite: 'none' });
+
+        // Environment-based cookie settings for production HTTPS
+        const isProduction = process.env.NODE_ENV === 'production';
+        const cookieOptions = {
+            httpOnly: true,
+            secure: isProduction, // HTTPS only in production
+            sameSite: (isProduction ? 'none' : 'lax') as 'none' | 'lax', // Cross-domain in production
+            maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
+        };
+        res.cookie('token', token, cookieOptions);
 
         res.json({ success: true, user: { id: user.id, email: user.email, name: user.name } });
     } catch (error: any) {
